@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="ru" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=360, initial-scale=1">
+<title>Телефон</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="prod/prod.css">
+<style>
+/* переменные прода (снято с ostrovok.ru) */
+body{--palette-black:#2d3137;--palette-dark:#868686;--palette-gray:#c8c8c8;--palette-light:#e5e5e5;--palette-ulight:#f4f4f4;--palette-white:#fff;--palette-main:#0E41D2;--palette-sec:#E3EBFD;--border:#e5e5e5;
+  --header-bg:#fff;--header-main:#0E41D2;--header-secondary:rgb(180,203,249);--header-typo:rgb(25,72,196);--header-height:48px;--header-logo-main-max-height:40px;
+  --map-control-shadow:0 4px 12px 0 #0000001a;--selected-bg:rgba(14,65,210,.1)}
+html,body{margin:0;height:100%;overflow:hidden}
+body{font-family:"PT Root UI Web",Helvetica,Arial,sans-serif;background:#f2f1f0;color:#2d3137;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+.hidden{display:none!important}
+
+/* рамка устройства (Figma: статус-бар 44, Safari-бар 50 снизу) */
+#status{position:absolute;left:0;top:0;width:360px;height:44px;z-index:1250;pointer-events:none}
+#safari{position:absolute;left:0;bottom:0;width:360px;height:131px;z-index:1400;pointer-events:none}
+.view{position:absolute;left:0;right:0;top:44px;bottom:0}
+
+/* ---------- SERP ---------- */
+#serpScroll{position:absolute;inset:0;overflow-y:auto;scrollbar-width:none;padding-bottom:120px}
+#serpScroll::-webkit-scrollbar{display:none}
+.hdr{background:#fff}
+.hdr .PopupControl_icon__njWnD{display:flex}
+/* Figma: блок поиска и фильтров — НОВЫЙ элемент */
+.sf{background:#f2f1f0;border-radius:0 0 12px 12px;padding:12px 8px 12px}
+.sf-search{height:48px;background:#fff;border-radius:12px;position:relative;padding:4px 12px 0 40px}
+.sf-search svg{position:absolute;left:12px;top:16px}
+.sf-search b{display:block;font-weight:700;font-size:14px;line-height:20px;color:#2d3137}
+.sf-search span{display:block;font-weight:480;font-size:14px;line-height:20px;color:#868686;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sf-chips{display:flex;gap:8px;margin-top:12px;overflow-x:auto;scrollbar-width:none;margin-right:-8px}
+.sf-chips::-webkit-scrollbar{display:none}
+.sf-fbtn{flex:0 0 32px;height:32px}
+.sf-chip{flex:0 0 auto;height:32px;background:#fff;border-radius:12px;padding:6px 10px;font-weight:700;font-size:14px;line-height:20px;color:#2d3137;white-space:nowrap}
+.list{display:flex;flex-direction:column;gap:12px;padding:4px 8px 0}
+.list .HotelCard_content__FFlla{box-shadow:0 4px 12px rgba(0,0,0,.1);border-radius:12px}
+.areachip{margin:4px 8px 4px;background:#E3EBFD;color:#0E41D2;border-radius:12px;padding:6px 12px;font-size:14px;line-height:20px;font-weight:480;display:flex;justify-content:space-between;align-items:center}
+.areachip b{font-weight:700;cursor:pointer}
+#areaSlot{position:sticky;top:0;z-index:20}
+.areachip{transition:margin .22s ease,padding .22s ease,border-radius .22s ease,box-shadow .22s ease}
+#areaSlot.stuck .areachip{margin:0 0 8px;padding:10px 20px;border-radius:0;box-shadow:0 4px 12px rgba(0,0,0,.08)}
+
+/* Figma: кнопки «Карта» / «Список» — НОВЫЙ элемент */
+.fbtn{position:absolute;left:50%;transform:translateX(-50%);bottom:66px;height:45px;border:0;border-radius:12px;background:#0d41d2;color:#fff;
+  display:flex;align-items:center;gap:6px;padding:0 16px;font-family:inherit;font-weight:480;font-size:16px;line-height:22px;cursor:pointer;z-index:1100;white-space:nowrap}
+.fbtn .n{background:rgba(255,255,255,.2);border-radius:8px;padding:0 6px;font-size:14px}
+
+/* галерея: свайп фото */
+.gal-track{display:flex;width:100%;height:100%;overflow-x:auto;touch-action:pan-y;cursor:grab;scroll-snap-type:x mandatory;scrollbar-width:none}
+.gal-track::-webkit-scrollbar{display:none}
+.gal-track picture{flex:0 0 100%;height:100%;scroll-snap-align:start;display:block}
+.gal-track img{display:block;-webkit-user-drag:none;pointer-events:none}
+.HotelGallery_favorite___39Zl{pointer-events:auto}
+.tz{position:absolute;top:0;bottom:0;width:35%;z-index:5}
+.tz.l{left:0}.tz.r{right:0}
+/* отзывы под рейтингом — из макета «Новая карточка на карте» */
+.rv{display:flex;align-items:center;gap:3px;font-size:12px;line-height:16px;font-weight:480;color:#8f8e94;margin-top:4px;justify-content:flex-end}
+.RightColumn_rating__Qac3q{flex-direction:column;align-items:flex-end;gap:0}
+
+/* ---------- карта ---------- */
+#map{position:absolute;inset:0;background:#e9e7e3}
+.leaflet-container{font-family:inherit}
+.leaflet-div-icon{background:none;border:0}
+.mk{position:absolute;transform:translate(-50%,-100%);white-space:nowrap}
+.HotelMarkerIcon_root__2aRo1{display:inline-flex;align-items:center;border:1px solid #e5e5e5;box-shadow:0 4px 12px rgba(0,0,0,.1);padding:4px 8px;cursor:pointer}
+.HotelMarkerIcon_root_isHighlighted___kk_W{border-color:transparent;color:#fff!important}
+.HotelMarkerIcon_root_isHighlighted___kk_W .HotelMarker_guruPrice__ERItg{color:#fff}
+.HotelMarker_root_isGuru__MHSG3{padding-left:28px}
+.mtop{position:absolute;left:8px;right:8px;top:12px;z-index:1100;pointer-events:none}
+.mtop > *{pointer-events:auto}
+.mtop .sf-chips{margin-top:12px;margin-right:-8px}
+.leaflet-right .leaflet-control-zoom{margin-right:8px}
+.leaflet-top.leaflet-right{top:240px}
+.Zoom_root__k81Rs a{display:flex!important;align-items:center;justify-content:center}
+
+/* новые элементы прототипа (нет в макетах) — в токенах макета */
+
+/* карточка на карте — Figma «19»: x8, низ на 8px выше Safari-бара, крестик 28 над карточкой */
+.mcard{position:absolute;left:8px;right:8px;bottom:58px;z-index:1200}
+.mcard .HotelCard_content__FFlla{box-shadow:0 4px 12px rgba(0,0,0,.1);border-radius:12px}
+.mcard .HotelGallery_root__IhA4z{aspect-ratio:auto;height:126px}
+.mcard .GalleryImage_item__zBL1Q{height:126px;object-fit:cover}
+.mcard .HotelGallery_favorite___39Zl{display:flex;gap:8px}
+.mclose{width:32px;height:32px;border-radius:8px;background:var(--palette-ulight,#f4f4f4);display:grid;place-items:center;cursor:pointer}
+
+/* лента (B) */
+.strip{position:absolute;left:0;right:0;bottom:58px;display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;padding:0 16px;z-index:1200;scrollbar-width:none}
+.strip::-webkit-scrollbar{display:none}
+.strip > .HotelCard_container__nMUj4{flex:0 0 312px;width:312px;min-width:0;scroll-snap-align:center}
+.strip .HotelCard_content__FFlla,.strip .RightColumn_info__E1rIP,.strip .RightColumn_header__pvGJd{min-width:0;max-width:100%}
+.strip .HotelCard_content__FFlla{box-shadow:0 4px 12px rgba(0,0,0,.1);border-radius:12px;height:100%}
+.strip .HotelGallery_root__IhA4z{aspect-ratio:auto;height:132px}
+.strip .Rate_root__fBDAr{margin-top:8px}
+
+/* шторка — Figma «Клик на группу пинов» */
+.dim{position:absolute;left:0;right:0;top:0;height:106px;background:rgba(0,0,0,.7);z-index:1240}
+.sheet{position:absolute;left:0;right:0;top:40px;bottom:0;background:#fff;border-radius:20px 20px 0 0;z-index:1241;display:flex;flex-direction:column;transition:transform .28s cubic-bezier(.2,.8,.2,1)}
+.sheet.drag{transition:none}
+.sh-bar{position:absolute;left:156px;top:-10px;width:48px;height:4px;border-radius:100px;background:#fff}
+.sheet.light .sh-bar{background:#c8c8c8;top:8px}
+.sh-head{padding:20px 16px 12px;cursor:grab;touch-action:none}
+.sh-head b{font-weight:700;font-size:16px;line-height:22px;color:#2d3137}
+.sh-list{flex:1;overflow-y:auto;scrollbar-width:none;padding-bottom:120px}
+.sh-list::-webkit-scrollbar{display:none}
+.sh-list .list{padding-top:0}
+
+.toast{position:absolute;left:50%;top:210px;transform:translate(-50%,-8px);background:#2d3137;color:#fff;padding:8px 14px;border-radius:12px;font-size:14px;line-height:20px;z-index:1500;opacity:0;transition:all .2s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:.95;transform:translate(-50%,0)}
+</style>
+</head>
+<body>
+<img id="status" src="prod/fig-statusbar.svg" alt="">
+
+<!-- ================= SERP ================= -->
+<div class="view" id="serp">
+  <div id="serpScroll">
+    <div class="hdr"><div class="HeaderB2C_main__nv7JA" data-testid="header">
+      <a class="Logo_logo__epKCW Logo_logo_position_first__QUWVr Logo_logo_type_main__Qa5zH"><img alt="" src="prod/logo.svg"></a>
+      <div class="Widgets_widgets__2JHIW" id="widgets"></div>
+    </div></div>
+    <div class="sf" id="serpSF"></div>
+    <div id="areaSlot"></div>
+    <div class="list" id="serpList"></div>
+  </div>
+  <button class="fbtn" id="btnMap"></button>
+</div>
+
+<!-- ================= MAP ================= -->
+<div class="view hidden" id="mapView">
+  <div id="map"></div>
+  <div class="mtop" id="mapSF"></div>
+  <div id="mapBottom"></div>
+  <button class="fbtn" id="btnList"></button>
+  <div class="dim hidden" id="dim"></div>
+  <div class="sheet hidden" id="sheet"><div class="sh-bar"></div><div class="sh-head" id="shHead"><b id="shTitle"></b></div><div class="sh-list" id="shList"></div></div>
+</div>
+
+<img id="safari" src="prod/fig-safari.svg" alt="">
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+const V=(new URLSearchParams(location.search).get('v')||'A').toUpperCase();
+const $=id=>document.getElementById(id);
+
+/* ---------- иконки: прод (шапка, пины) и Figma (новые элементы) ---------- */
+const IC={
+ heart:'<svg width="20" height="20" viewBox="0 0 20 20"><path fill="#0E41D2" d="M19.787 9.431C18.699 15.046 10 19.9 10 19.9S1.301 15.045.213 9.43C-.859 3.9 2.296 1.01 5.556 1.01A4.938 4.938 0 0 1 10 3.232a4.938 4.938 0 0 1 4.444-2.222c3.26 0 6.415 2.889 5.343 8.421Z"/></svg>',
+ bell:'<svg width="20" height="20" viewBox="0 0 20 20"><path fill="#0E41D2" d="m18.66 14.354.154.16c.246.259.355.568.353.87a1.297 1.297 0 0 1-1.314 1.283h-5.495a2.5 2.5 0 1 1-4.716 0H2.147c-.782 0-1.31-.625-1.314-1.282a1.237 1.237 0 0 1 .353-.87c.049-.052.1-.105.155-.16.813-.838 2.115-2.178 2.115-6.022 0-3.113 2.23-5.605 5.235-6.216v-.835C8.691.574 9.277 0 10 0s1.309.574 1.309 1.282v.835c3.006.611 5.235 3.103 5.235 6.216 0 3.844 1.302 5.184 2.116 6.021Z"/></svg>',
+ help:'<svg width="22" height="22" viewBox="0 0 24 24"><defs><mask id="hm"><path fill="#fff" d="M0 0h100v100H0z"/><path fill="transparent" stroke="#000" d="M9.19 11.743c0-.788.028-1.308.662-1.905 1.049-.989 1.846-1.31 1.795-2.648-.044-1.17-.78-2.02-1.933-2.228-1.167-.211-2.3.312-2.691 1.497"/><circle cx="9.229" cy="14.17" r="1"/></mask></defs><g fill="none" mask="url(#hm)"><path fill="rgb(180, 203, 249)" d="M15.187 7.291a8.252 8.252 0 1 0 4.381 15.247l2.743.915a.571.571 0 0 0 .723-.723l-.907-2.72a8.252 8.252 0 0 0-6.94-12.718z"/><path fill="#0E41D2" d="M9.338.314a9.324 9.324 0 1 1 0 18.649 9.282 9.282 0 0 1-4.951-1.422l-3.24 1.08a.571.571 0 0 1-.722-.722l1.071-3.214A9.28 9.28 0 0 1 .014 9.639 9.324 9.324 0 0 1 9.338.314z"/></g></svg>',
+ user:'<svg width="24" height="24"><g fill="none" fill-rule="nonzero"><ellipse fill="rgb(180, 203, 249)" cx="12" cy="12" rx="12" ry="12"/><path fill="#0E41D2" d="M12 4.8c3.221 0 5.833 2.686 5.833 6a6.064 6.064 0 0 1-1.865 4.398c2.17.912 3.977 2.549 5.136 4.619A11.968 11.968 0 0 1 12 24a11.973 11.973 0 0 1-9.105-4.183c1.16-2.07 2.967-3.707 5.137-4.62A6.064 6.064 0 0 1 6.166 10.8c0-3.314 2.612-6 5.834-6z"/></g></svg>',
+ burger:'<svg width="24" height="24"><g fill="#0E41D2" transform="translate(0 3)"><rect width="24" height="2" rx="1"/><rect width="24" height="2" y="8" rx="1"/><rect width="24" height="2" y="16" rx="1"/></g></svg>',
+ guruHi:'<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none"><path fill="url(#gha)" stroke="#fff" d="M8 20.6c-.2 0-.6-.2-.7-.6a24 24 0 0 0-.7-2.8c-.3-.9-.6-1.7-1-2.3-.5-.5-1.1-1-1.9-1.4a12 12 0 0 0-2-.8c-.4-.1-.5-.5-.5-.7 0-.2.1-.6.5-.7a12 12 0 0 0 2-.8c.8-.4 1.4-.8 1.9-1.4.4-.5.7-1.4 1-2.3L7.3 4c0-.4.5-.6.7-.6.2 0 .7.2.7.6l.7 2.8c.3 1 .6 1.8 1 2.3.5.6 1.1 1 1.9 1.4.7.4 1.4.6 2 .8.4.1.5.5.5.7 0 .2-.1.6-.5.7-.6.2-1.3.4-2 .8-.8.4-1.4.9-1.9 1.4-.4.6-.7 1.4-1 2.3L8.7 20c0 .4-.5.6-.7.6Z"/><path fill="url(#ghb)" stroke="#fff" d="M14 18.6c-.2 0-.6-.2-.7-.6a24 24 0 0 0-.7-2.8c-.3-.9-.6-1.7-1-2.3-.5-.5-1.1-1-1.9-1.4a12 12 0 0 0-2-.8c-.4-.1-.5-.5-.5-.7 0-.2.1-.6.5-.7a12 12 0 0 0 2-.8c.8-.4 1.4-.8 1.9-1.4.4-.5.7-1.4 1-2.3l.7-2.8c0-.4.5-.6.7-.6.2 0 .7.2.7.6l.7 2.8c.3 1 .6 1.8 1 2.3.5.6 1.1 1 1.9 1.4.7.4 1.4.6 2 .8.4.1.5.5.5.7 0 .2-.1.6-.5.7-.6.2-1.3.4-2 .8-.8.4-1.4.9-1.9 1.4-.4.6-.7 1.4-1 2.3l-.7 2.8c0 .4-.5.6-.7.6Z"/><path fill="url(#ghc)" d="M19.9 9.8c-1.1-.4-3-1.1-4-2.4-.9-1.2-1.4-3.6-1.7-5.2 0-.3-.4-.3-.4 0-.3 1.6-.8 4-1.7 5.2A6 6 0 0 1 10 9L8 9.8c-.1 0-.1.4 0 .4 1.1.4 3 1.1 4 2.4l.2.4c.8 1.2 1.2 3.4 1.5 4.8 0 .3.4.3.4 0 .3-1.6.8-4 1.7-5.2 1-1.3 2.9-2 4-2.4.1 0 .1-.4 0-.4Z"/><path fill="url(#ghd)" d="M2.1 12.2c1.1.4 3 1.1 4 2.4.9 1.2 1.4 3.6 1.7 5.2 0 .3.4.3.4 0 .3-1.6.8-4 1.7-5.2A6 6 0 0 1 12 13l1.9-.8c.1 0 .1-.4 0-.4-1.1-.4-3-1.1-4-2.4a16.2 16.2 0 0 1-1.7-5.2c0-.3-.4-.3-.4 0-.3 1.6-.8 4-1.7 5.2-1 1.3-2.9 2-4 2.4-.1 0-.1.4 0 .4Z"/><path fill="url(#ghc)" d="M19.9 9.8c-1.1-.4-3-1.1-4-2.4-.9-1.2-1.4-3.6-1.7-5.2 0-.3-.4-.3-.4 0-.3 1.6-.8 4-1.7 5.2A6 6 0 0 1 10 9L8 9.8c-.1 0-.1.4 0 .4 1.1.4 3 1.1 4 2.4l.2.4c.8 1.2 1.2 3.4 1.5 4.8 0 .3.4.3.4 0 .3-1.6.8-4 1.7-5.2 1-1.3 2.9-2 4-2.4.1 0 .1-.4 0-.4Z"/><defs><linearGradient id="gha" x1="14.3" x2="1.7" y1="8.2" y2="14.6" gradientUnits="userSpaceOnUse"><stop stop-color="#0A4FEC"/><stop offset="1" stop-color="#00E0FF"/></linearGradient><linearGradient id="ghb" x1="11.7" x2="19.6" y1="16.8" y2="4.9" gradientUnits="userSpaceOnUse"><stop stop-color="#0A4FEC"/><stop offset="1" stop-color="#471AFA"/></linearGradient><linearGradient id="ghc" x1="16.2" x2="8.2" y1="3.3" y2="14.8" gradientUnits="userSpaceOnUse"><stop stop-color="#0A4FEC"/><stop offset="1" stop-color="#471AFA"/></linearGradient><linearGradient id="ghd" x1="14" x2="1.8" y1="8.2" y2="14.2" gradientUnits="userSpaceOnUse"><stop stop-color="#0A4FEC"/><stop offset="1" stop-color="#00E0FF"/></linearGradient></defs></svg>',
+ guru:'<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none"><path fill="url(#ga)" d="M5 13.6A14 14 0 0 1 6.8 19c0 .2.4.2.4 0 .3-1.6.9-4 1.8-5.3 1-1.3 3-2 4.1-2.4.2 0 .2-.4 0-.4-1-.4-3-1.1-4-2.4A14 14 0 0 1 7.1 3c0-.2-.4-.2-.4 0A14 14 0 0 1 5 8.4c-1 1.3-3 2-4.1 2.4-.2 0-.2.4 0 .4 1 .4 3 1.1 4 2.4Z"/><path fill="url(#gb)" d="M11 11.6a14 14 0 0 1 1.8 5.3c0 .2.4.2.4 0 .3-1.6.9-4 1.8-5.3 1-1.3 3-2 4.1-2.4.2 0 .2-.4 0-.4-1-.4-3-1.1-4-2.4A14 14 0 0 1 13.1 1c0-.2-.4-.2-.4 0A14 14 0 0 1 11 6.4c-1 1.3-3 2-4.1 2.4-.2 0-.2.4 0 .4 1 .4 3 1.1 4 2.4Z"/><defs><linearGradient id="ga" x1="13.3" x2=".7" y1="7.2" y2="13.6" gradientUnits="userSpaceOnUse"><stop stop-color="#0A4FEC"/><stop offset="1" stop-color="#00E0FF"/></linearGradient><linearGradient id="gb" x1="10.7" x2="18.6" y1="15.8" y2="3.9" gradientUnits="userSpaceOnUse"><stop stop-color="#0A4FEC"/><stop offset="1" stop-color="#471AFA"/></linearGradient></defs></svg>',
+ rating:'<svg class="HotelTotalRating_icon__RkE_d" xmlns="http://www.w3.org/2000/svg" fill="#25ac03" viewBox="0 0 24 28"><path d="M0 4a4 4 0 0 1 4-4h16a4 4 0 0 1 4 4v21.771a1.5 1.5 0 0 1-2.065 1.39l-9.558-3.886a1 1 0 0 0-.754 0l-9.558 3.886A1.5 1.5 0 0 1 0 25.77V4Z"/></svg>',
+ search:'<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6.4032 0C2.86681 0 0 2.86681 0 6.4032C0 9.93959 2.86681 12.8064 6.4032 12.8064C7.83172 12.8064 9.18208 12.3075 10.2473 11.5167L13.8041 15.0709C14.0124 15.2792 14.3501 15.2792 14.5584 15.0709L15.0775 14.5517C15.2858 14.3434 15.2858 14.0057 15.0775 13.7974L11.52 10.244C12.3098 9.17914 12.8064 7.83069 12.8064 6.4032C12.8064 2.86681 9.93958 0 6.4032 0ZM6.40319 10.9521C8.91548 10.9521 10.9521 8.91548 10.9521 6.40319C10.9521 3.8909 8.91548 1.85429 6.40319 1.85429C3.8909 1.85429 1.85429 3.8909 1.85429 6.40319C1.85429 8.91548 3.8909 10.9521 6.40319 10.9521Z" fill-rule="evenodd" clip-rule="evenodd" fill="#464A4F"/></svg>',
+ filter:'<svg width="32" height="32" viewBox="0 0 32 32" fill="none"><rect width="32" height="32" rx="12" fill="white"/><path d="M25 11.9502C24.9999 12.4472 24.5966 12.8496 24.0996 12.8496L16.3193 12.8496C15.9321 14.1508 14.7267 15.0994 13.2998 15.0996C11.8729 15.0995 10.6694 14.1506 10.2822 12.8496L7.90039 12.8496C7.4034 12.8496 7.0001 12.4472 7 11.9502C7.00005 11.4532 7.40337 11.0498 7.90039 11.0498L10.2822 11.0498C10.6697 9.74908 11.8733 8.79989 13.2998 8.7998C14.7264 8.79998 15.9318 9.74893 16.3193 11.0498L24.0996 11.0498C24.5966 11.0498 24.9999 11.4532 25 11.9502ZM25 20.0498C24.9998 20.5467 24.5966 20.9492 24.0996 20.9492L21.7207 20.9492C21.3339 22.2506 20.1292 23.1999 18.7021 23.2002C17.2749 23.2002 16.0697 22.2507 15.6826 20.9492L7.90039 20.9492C7.40343 20.9492 7.00016 20.5467 7 20.0498C7.00026 19.553 7.4035 19.1494 7.90039 19.1494L15.6836 19.1494C16.0714 17.8489 17.2757 16.9004 18.7021 16.9004C20.1285 16.9006 21.3333 17.8489 21.7207 19.1494L24.0996 19.1494C24.5965 19.1494 24.9997 19.553 25 20.0498ZM14.875 11.9502C14.8749 11.0805 14.1695 10.3751 13.2998 10.375C12.4301 10.3751 11.7247 11.0805 11.7246 11.9502C11.7247 12.8199 12.4301 13.5253 13.2998 13.5254C14.1695 13.5253 14.8749 12.8199 14.875 11.9502ZM20.2764 20.0498C20.2762 19.1801 19.5709 18.4756 18.7012 18.4756C17.8315 18.4756 17.1262 19.1801 17.126 20.0498C17.126 20.9197 17.8313 21.625 18.7012 21.625C19.571 21.625 20.2764 20.9197 20.2764 20.0498Z" fill="#333333"/></svg>',
+ map:'<svg width="24" height="24" viewBox="16 11 24 24" fill="none"><path d="M37.0029 13.5394C37.4891 13.3753 37.9932 13.7372 37.9932 14.2504V29.307C37.9931 29.6286 37.788 29.9149 37.4834 30.0179L31.7354 31.9603C31.5796 32.013 31.4107 32.013 31.2549 31.9603L25.748 30.099L20.2402 31.9603C19.7542 32.1246 19.2503 31.7634 19.25 31.2504V16.1927C19.25 15.8497 19.4829 15.5506 19.8154 15.4662L25.5635 14.0092C25.6844 13.9785 25.8107 13.9785 25.9316 14.0092L31.4648 15.4115L37.0029 13.5394ZM26.5 28.7699L31 30.2904V16.8412L26.5 15.6996V28.7699ZM20.75 16.7767V30.2045L25 28.7679V15.6986L20.75 16.7767ZM32.5 16.6449V30.1185L36.4932 28.7689V15.2953L32.5 16.6449Z" fill="white"/></svg>',
+ list:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M18.1348 17.1543C18.6126 17.1544 19 17.5416 19 18.0195C18.9998 18.4973 18.6125 18.8847 18.1348 18.8848H4.86523C4.38747 18.8847 4.00016 18.4973 4 18.0195C4 17.5416 4.38736 17.1544 4.86523 17.1543H18.1348ZM18.1348 11.3848C18.6126 11.3848 18.9999 11.7722 19 12.25C19 12.7279 18.6126 13.1152 18.1348 13.1152H4.86523C4.38736 13.1152 4 12.7279 4 12.25C4.00013 11.7722 4.38745 11.3848 4.86523 11.3848H18.1348ZM18.1348 5.61523C18.6125 5.61532 18.9998 6.00272 19 6.48047C19 6.95836 18.6126 7.34562 18.1348 7.3457H4.86523C4.38736 7.34562 4 6.95836 4 6.48047C4.00016 6.00272 4.38746 5.61532 4.86523 5.61523H18.1348Z" fill="white"/></svg>',
+ close:'<svg width="12" height="12" viewBox="0 0 12 12"><path d="M1 1l10 10M11 1L1 11" stroke="#2d3137" stroke-width="1.8" stroke-linecap="round"/></svg>',
+ bubble:'<svg width="11" height="10" viewBox="0 0 12 11" fill="none"><path d="M1.5 1.2h9a.9.9 0 0 1 .9.9v5a.9.9 0 0 1-.9.9H5L2.4 9.8V8h-.9a.9.9 0 0 1-.9-.9v-5a.9.9 0 0 1 .9-.9Z" stroke="#8f8e94" stroke-width="1.2" stroke-linejoin="round"/></svg>',
+ reload:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0E41D2" stroke-width="2.4" stroke-linecap="round"><path d="M20 12a8 8 0 11-2.3-5.6M20 4v5h-5"/></svg>',
+ plus:'<svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 1v14M1 8h14" stroke="#2d3137" stroke-width="1.6" stroke-linecap="round"/></svg>',
+ minus:'<svg width="16" height="16" viewBox="0 0 16 16"><path d="M1 8h14" stroke="#2d3137" stroke-width="1.6" stroke-linecap="round"/></svg>'
+};
+
+/* шапка — разметка прода */
+const ctl=svg=>`<div class="clickOutside"><button class="Wrapper_control__UfBmt" style="background:none;border:0;padding:0"><div class="PopupControl_root__6gBTn"><div class="PopupControl_icon__njWnD">${svg}</div></div></button></div>`;
+$('widgets').innerHTML=ctl(IC.heart)+ctl(IC.bell)+ctl(IC.help)+ctl(IC.user)+ctl(IC.burger);
+
+/* блок поиска + фильтров — Figma */
+const sfHTML=`<div class="sf-search">${IC.search}<b>Москва</b><span>9 дек – 12 дек, 2 взрослых, 1 номер</span></div>
+  <div class="sf-chips"><span class="sf-fbtn">${IC.filter}</span><span class="sf-chip">Бесплатная отмена</span><span class="sf-chip">Завтрак</span><span class="sf-chip">Все включено</span><span class="sf-chip">Рейтинг 8+</span></div>`;
+$('serpSF').innerHTML=sfHTML; $('mapSF').innerHTML=sfHTML;
+$('btnMap').innerHTML=IC.map+'Карта';
+
+/* ---------- данные: реальные отели из выдачи ostrovok.ru (9–12 дек, 2 гостя) ---------- */
+const P='prod/img/';
+const H=[
+ {id:1,n:'Отель Измайлово Бета',s:3,d:'8,9 км от центра Москвы',r:'8,5',rv:4708,top:1,p:15900,g:'14 310 ₽',free:1,ll:[55.7892,37.7485],im:['14c07e3756d0a35adf618fea9bbe46ff65572926.jpeg','42d3fcdf0137395316e39cdc2a9df36fb7666db5.jpeg','acf4a14a74dc8011bdaada13f4b4a17a044aa092.jpeg']},
+ {id:2,n:'Отель Измайлово Гамма',s:3,d:'9,1 км от центра Москвы',r:'8,4',rv:3920,top:1,p:16100,g:'14 490 ₽',free:1,ll:[55.7892,37.7485],im:['9e5f54f5d2720e010dcd187bbc84383b4fcac23b.jpeg','871021d20931d9b7e09397b9ff1102ec350bbef4.jpeg','53a326573447fcb8fa78524524f993ec6d6e54ce.jpeg']},
+ {id:3,n:'Сафмар Грандъ Москва (бывший Марриотт Гранд)',s:5,d:'1,8 км от центра Москвы',r:'8,7',rv:1198,top:0,p:35700,g:'32 130 ₽',free:1,ll:[55.7676,37.6011],im:['8b47fee74b66fa447403cc94d8fecaf3f718abe3.jpeg','92fe6895056461d4da2ca11c978d4ff564eff42b.png','3bdb5783c4bbc3053b09803826dd03573ad1005f.jpeg']},
+ {id:4,n:'Гостиница Националь Москва',s:5,d:'241 м от центра Москвы',r:'9,0',rv:1384,top:1,p:53550,g:'48 195 ₽',free:1,ll:[55.7575,37.6153],im:['17026eb83f728cfcd744ffa718b0acbdce32c22b.jpeg','b0e7ee70ccb6a94fc981754d7ed648e07de26cc7.jpeg','16c4702099a9a15fd2566f7ece0f30553c3dc79c.jpeg']},
+ {id:5,n:'Отель Mercure Москва Павелецкая',s:4,d:'2,5 км от центра Москвы',r:'9,1',rv:2216,top:0,p:25200,g:'23 640 ₽',free:1,ll:[55.7298,37.6402],im:['b8e954043cc5492b0d34aa78b4fde2d99ba3da6b.jpeg','6d346a9d7699df2b9c6d8d6343d818f06bb2e06b.jpeg','f79bd8132de3dc31b0c89c4ce9a63ea6b3a26c71.jpeg']},
+ {id:6,n:'Отель Сафмар Тверская Москва (бывший Марриотт Тверская)',s:4,d:'2,9 км от центра Москвы',r:'8,3',rv:982,top:0,p:27900,g:'25 110 ₽',free:1,ll:[55.7737,37.5927],im:['7220edc3335533fbe8d94f2b158ea831c8363106.jpeg','c6486274f1a81a541ad2f88f7d748fe07ad61808.jpeg','816a946bbc8dc21c87182167dbf79417e1d2d7f1.jpeg']},
+ {id:7,n:'Отель Сущевский Сафмар (бывший Холидей Инн Москва Сущевский)',s:4,d:'4 км от центра Москвы',r:'8,1',rv:2745,top:0,p:17550,g:'15 795 ₽',free:1,ll:[55.7902,37.6005],im:['d78999c8de0f12f7471af13da9e5eaf97d686866.jpeg','4be2733c42a4cea6dd17e703b4f34402e6034cab.jpeg','9f2ed0b8c5bf53c257bb1b7aadd2f074c2f09014.png']},
+ {id:8,n:'Отель Cosmos Smart Москва Семеновская',s:3,d:'7,3 км от центра Москвы',r:'9,3',rv:861,top:1,p:22100,g:'',free:1,ll:[55.7813,37.7165],im:['3dff8e50f377fabb102c91fa6370f5dfbb346723.jpeg','117436f8d307160b574b227138dcc7a6bf7c695a.jpeg','4f1f9f63c15aa764c4b5b1db0dea0eb94a284f35.jpeg']},
+ {id:9,n:'Отель Катюша',s:3,d:'7 км от центра Москвы',r:'8,6',rv:312,top:0,p:10500,g:'',free:1,ll:[55.7408,37.7040],im:['11e9a21da62213e47345883de455e7ca21d2646e.jpeg','a64b38b20b02dd640d1dbc7064513e0852e42729.jpeg','5dde19ed7b79a658a66d3798ee339699c748d22a.jpeg']},
+ {id:10,n:'Отель Птица-Синица',s:3,d:'1 км от центра Москвы',r:'8,2',rv:540,top:1,p:20970,g:'18 873 ₽',free:1,ll:[55.7640,37.6335],im:['0a110f0b33307a7b909a2699155a8c1db97aac76.jpeg','27c9ba733773e60e22f577e59fd0c38d4fc622af.jpeg','4f2412cb0c06b4753d6f996e075762a7df458953.jpeg']},
+ {id:11,n:'Отель Москва Красносельская (бывший Хилтон Гарден Инн Красносельская)',s:4,d:'4,3 км от центра Москвы',r:'8,9',rv:1764,top:1,p:21375,g:'',free:0,ll:[55.7794,37.6672],im:['4399710593c64a944e0901ebd883b3f3e43039a2.jpeg','e92cb65702c16b8dd7b0e94339dc708abd552862.jpeg','77c7d7db44d0e54705853b32a40ae31f46571b55.jpeg']},
+];
+const fav=new Set();
+const S={sel:null,group:null,area:null,sheet:null};
+const rub=n=>n.toLocaleString('ru-RU').replace(/ /g,' ')+' ₽';
+const plural=(n,a,b,c)=>{n=Math.abs(n)%100;const k=n%10;if(n>10&&n<20)return c;if(k>1&&k<5)return b;if(k==1)return a;return c};
+const byId=id=>H.find(h=>h.id===id);
+
+/* ---------- мок: ещё отели вокруг (распределение как в выдаче: густо в центре, кучки у метро) ---------- */
+const POOL=['0a110f0b33307a7b909a2699155a8c1db97aac76.jpeg','117436f8d307160b574b227138dcc7a6bf7c695a.jpeg','11e9a21da62213e47345883de455e7ca21d2646e.jpeg','14c07e3756d0a35adf618fea9bbe46ff65572926.jpeg','16c4702099a9a15fd2566f7ece0f30553c3dc79c.jpeg','17026eb83f728cfcd744ffa718b0acbdce32c22b.jpeg','20a7a89d860d700ac8ec35204aed4026a9fd82c2.jpeg','2129a2078617802fd704f07b3f7539d8f6c41bf2.jpeg','27c9ba733773e60e22f577e59fd0c38d4fc622af.jpeg','3bdb5783c4bbc3053b09803826dd03573ad1005f.jpeg','3dff8e50f377fabb102c91fa6370f5dfbb346723.jpeg','42d3fcdf0137395316e39cdc2a9df36fb7666db5.jpeg','431d558ae5467df183a6c5b4ea8cc4a860104a69.jpeg','4399710593c64a944e0901ebd883b3f3e43039a2.jpeg','46478810570f6dfe18c5276c9db28efe7e854e20.jpeg','4be2733c42a4cea6dd17e703b4f34402e6034cab.jpeg','4f1f9f63c15aa764c4b5b1db0dea0eb94a284f35.jpeg','4f2412cb0c06b4753d6f996e075762a7df458953.jpeg','53a326573447fcb8fa78524524f993ec6d6e54ce.jpeg','5dde19ed7b79a658a66d3798ee339699c748d22a.jpeg','6d346a9d7699df2b9c6d8d6343d818f06bb2e06b.jpeg','7220edc3335533fbe8d94f2b158ea831c8363106.jpeg','77c7d7db44d0e54705853b32a40ae31f46571b55.jpeg','816a946bbc8dc21c87182167dbf79417e1d2d7f1.jpeg','871021d20931d9b7e09397b9ff1102ec350bbef4.jpeg','8b47fee74b66fa447403cc94d8fecaf3f718abe3.jpeg','93f2b2ecec3fc8d2f056565a8ae64ce6ecce5f19.jpeg','9e5f54f5d2720e010dcd187bbc84383b4fcac23b.jpeg','a0983126d38ed29312e0bb4718b2ba597d2f5fbc.jpeg','a64b38b20b02dd640d1dbc7064513e0852e42729.jpeg','acf4a14a74dc8011bdaada13f4b4a17a044aa092.jpeg','b0e7ee70ccb6a94fc981754d7ed648e07de26cc7.jpeg','b8e954043cc5492b0d34aa78b4fde2d99ba3da6b.jpeg','bd2bcc32cdf5802617b3ac7c367591c0b42bdb55.jpeg','c6486274f1a81a541ad2f88f7d748fe07ad61808.jpeg','d78999c8de0f12f7471af13da9e5eaf97d686866.jpeg','d8048268215c960d000ac05bfa29c9080c34eece.jpeg','e92cb65702c16b8dd7b0e94339dc708abd552862.jpeg','f564164870d0241fda26a56d955479c959c347ee.jpeg','f79bd8132de3dc31b0c89c4ce9a63ea6b3a26c71.jpeg'];
+(function(){
+  let seed=7; const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
+  const gauss=()=>{let u=0;for(let i=0;i<4;i++)u+=rnd();return (u-2)/1.15;};
+  const C=[55.7558,37.6173];
+  // узлы: центр + районы у метро (кучнее), веса = доля отелей
+  const NODES=[[55.7558,37.6173,.012,8],[55.7558,37.6173,.024,8],[55.7760,37.6560,.010,3],[55.7300,37.6400,.010,3],[55.7740,37.5820,.010,3],[55.7890,37.7480,.006,2],[55.7480,37.5370,.008,2],[55.8070,37.5800,.010,2],[55.7090,37.6560,.012,2],[55.7810,37.7130,.008,2],[55.7420,37.7040,.009,2],[55.8170,37.6380,.010,1],[55.7050,37.5800,.010,1],[55.6900,37.7300,.012,1],[55.8350,37.4900,.012,1],[55.7650,37.8350,.012,1],[55.6700,37.5500,.014,1]];
+  const W=NODES.reduce((a,n)=>a+n[3],0);
+  const pre=['Отель','Отель','Гостиница','Апарт-отель','Мини-отель','Хостел','Бутик-отель','Апартаменты'];
+  const nm=['Арбат Хаус','Ясная','На Чистых прудах','Тверская 12','Покровка','Метрополь Сити','Космос','Белград','Ибис Москва Павелецкая','Новотель Москва Сити','Азимут Смоленская','Хилтон Ленинградская','Вега Измайлово','Бородино','Солянка','Пекин','Арт Деко','Старый Город','Маяковская','Сретенка','Садовое кольцо','Лефортово','Сокольники','Красные ворота','Бауманская','Хамовники','Замоскворечье','Кадаши','Таганка','Пятницкая','Ордынка','Савёловская','Белорусская','Новослободская','Шаболовка','Крылатское','Динамо','Парк Горького','Китай-город','Курская','Варварка','Остоженка','Пресня','Мосфильм','Воробьёвы горы','Нагатино','Коломенское','Ботанический сад','ВДНХ','Останкино','Лужники','Полянка','Мясницкая','Тишинка','Цветной бульвар','Петровка','Неглинная','Рижская','Электрозаводская','Преображенка'];
+  let id=100;
+  const suf=['',' Сити',' Парк',' Плаза',' Резиденс',' Инн',' Лофт'];
+  for(let i=0;i<340;i++){
+    let r=rnd()*W,n=NODES[0]; for(const x of NODES){ if((r-=x[3])<=0){n=x;break;} }
+    const ll=[+(n[0]+gauss()*n[2]).toFixed(5), +(n[1]+gauss()*n[2]*1.8).toFixed(5)];
+    const km=Math.hypot((ll[0]-C[0])*111,(ll[1]-C[1])*62.6);
+    const pf=pre[Math.floor(rnd()*pre.length)], s=pf==='Хостел'?0:pf==='Мини-отель'?2:km<3?(rnd()<.4?5:4):(rnd()<.6?3:4);
+    const base=(s===0?1500:s===2?2900:s===3?4600:s===4?7200:13500)*(1+Math.max(0,4-km)*.1)*(.75+rnd()*.5);
+    const p=Math.round(base/100)*100*3, g=rnd()<.45;
+    const im=[0,1,2].map(()=>POOL[Math.floor(rnd()*POOL.length)]);
+    H.push({id:id++,n:pf+' '+nm[i%nm.length]+suf[Math.floor(i/nm.length)%suf.length],s,d:(km<1?Math.round(km*1000)+' м':km.toFixed(1).replace('.',',')+' км')+' от центра Москвы',
+      r:(7.4+rnd()*2.1).toFixed(1).replace('.',','),rv:Math.round(40+rnd()*2400),top:rnd()<.2?1:0,p,g:g?rub(Math.round(p*.9/5)*5):'',free:rnd()<.7?1:0,ll,im,mock:1});
+  }
+})();
+// фоновые точки — отели без цены на эти даты/вне ранжирования; густота как на проде
+const DOTS=(function(){ let seed=91; const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647; const gauss=()=>{let u=0;for(let i=0;i<4;i++)u+=rnd();return (u-2)/1.15;};
+  const out=[]; const N=[[55.7558,37.6173,.035,10],[55.7760,37.6560,.015,3],[55.7300,37.6400,.015,3],[55.7740,37.5820,.015,3],[55.7890,37.7480,.012,2],[55.7480,37.5370,.012,2],[55.8070,37.5800,.016,2],[55.7090,37.6560,.016,2],[55.7810,37.7130,.012,2],[55.7420,37.7040,.014,2],[55.8170,37.6380,.016,2],[55.7050,37.5800,.016,2],[55.6900,37.7300,.02,2],[55.8350,37.4900,.02,1],[55.7650,37.8350,.02,1],[55.6700,37.5500,.02,1],[55.8600,37.6600,.02,1],[55.6500,37.6400,.02,1]];
+  const W=N.reduce((a,n)=>a+n[3],0);
+  for(let i=0;i<300;i++){ let r=rnd()*W,n=N[0]; for(const x of N){ if((r-=x[3])<=0){n=x;break;} } out.push({ll:[n[0]+gauss()*n[2],n[1]+gauss()*n[2]*1.8],w:rnd()}); }
+  return out; })();
+
+
+/* ---------- карточка отеля: разметка и классы прода ---------- */
+function card(h,mode='list'){
+  const imgs=h.im.map(f=>`<picture class="StorageImage_picture___wpnT StorageImage_picture_loaded__1N1FC"><img class="GalleryImage_item__zBL1Q" src="${P+f}" alt="" loading="lazy" draggable="false"></picture>`).join('');
+  const dots=h.im.map((_,i)=>`<div class="DotsPagination_dot__e6sfK DotsPagination_dot_visible__8FO1W ${i===0?'DotsPagination_dot_active__YmMbn':''}"></div>`).join('');
+  return `<div class="HotelCard_container__nMUj4" data-is-mobile-size="true" data-open="${h.id}"><div class="HotelCard_content__FFlla">
+  <div class="HotelGallery_root__IhA4z">
+    <a class="Link_link___BpEA HotelGallery_gallery__Eyw__"><div class="Gallery_root__01DmD"><div class="GallerySlider_root__e6LQV"><div class="gal-track">${imgs}</div></div>
+      <div class="DotsPagination_container__Bw_Cb DotsPagination_container_height_m__UE01k"><div class="DotsPagination_dots__GxdoY">${dots}</div></div></div></a>
+    ${mode==='strip'?'<div class="tz l" data-tz="-1"></div><div class="tz r" data-tz="1"></div>':''}
+    <div class="HotelGallery_galleryContent__hbYrS">
+      ${h.free&&mode!=='strip'?'<div class="HotelGallery_valueAddsMobile__zKyhi"><span class="ValueAdds_mobileItem__M8zBT">Бесплатная отмена</span></div>':''}
+      <div class="HotelGallery_favorite___39Zl"><div><div class="Favorite_root__qyOOi ${fav.has(h.id)?'Favorite_root_active__qUOws':''}" data-fav="${h.id}"></div></div></div>
+    </div>
+  </div>
+  <a class="RightColumn_info__E1rIP">
+    <div class="RightColumn_header__pvGJd">
+      <div class="RightColumn_headerContent__rXDOq">
+        <div class="HotelStars_root__Yh2fX" style="--star-size:8px">${'<span class="HotelStars_star__30xfr"></span>'.repeat(h.s)}</div>
+        <div class="RightColumn_headLine__xXyaD"><div class="RightColumn_name__gpxNO">${h.n}</div>${h.top?'<button class="FloatingHint_wrapper__VyIWe" style="background:none;border:0;padding:0;display:flex"><div class="Topstays_root__SpksZ Topstays_root_size_extra_small__oBVPK"></div></button>':''}</div>
+        <div class="RightColumn_distances__xPFBv RightColumn_distances_isMobileSize__l3Jli"><div class="Distances_distance__jyUQJ Distances_distance_isMobileSize__9QoRp">${h.d}</div></div>
+      </div>
+      <div class="RightColumn_rating__Qac3q"><div class="HotelTotalRating_root__wZqAS" style="position:relative">${IC.rating}<span class="HotelTotalRating_content__P2vvd">${h.r}</span></div>
+        ${mode!=='list'?`<div class="rv">${IC.bubble}${h.rv.toLocaleString('ru-RU')}</div>`:''}</div>
+    </div>
+    <div class="Rate_root__fBDAr ${h.g?'Rate_root_guruExp__ys7fH':''}"><div class="Rate_content__0ibQ_"><div class="Rate_priceContainer__FhTOf">
+      <div class="Rate_priceWrapper__KwHEi"><span class="Rate_priceValue__MQV3T Rate_priceValue_isMobileSize__tns27">${rub(h.p)}</span></div>
+      <div class="Rate_priceDescription__7IpBz"><div>за 3 ночи для 2 гостей</div></div></div></div></div>
+    ${h.g&&mode!=='strip'?`<div class="Rate_guruBenefits_slot_belowRate__JQCVv"><div class="GuruBenefits_container__jdEw_ GuruBenefits_container_guruExp__K6p34"><div class="GuruBenefits_action__gmnYq"><button class="GuruBenefits_actionText__bFUJr" style="background:none;border:0;padding:0;font:inherit;color:var(--action-text-color);font-weight:700;text-align:left">Войдите<span class="GuruBenefits_plainText__VpF63" style="color:#2d3137;font-weight:480"> и забронируйте за <span class="GuruBenefits_percent__gVn3e" style="color:var(--action-text-color);font-weight:700">${h.g}</span></span></button></div><div class="GuruBenefits_guruIconContainer__zX6eW"><div class="Guru_root__0Fcap"><span class="GuruLogo_logo__KFYHO Guru_logo__M3vPO"></span></div></div></div></div>`:''}
+  </a></div></div>`;
+}
+function bindGallery(root){
+  root.querySelectorAll('.HotelGallery_root__IhA4z').forEach(g=>{
+    const t=g.querySelector('.gal-track'),dots=g.querySelectorAll('.DotsPagination_dot__e6sfK');
+    t.addEventListener('scroll',()=>{const i=Math.round(t.scrollLeft/t.clientWidth);dots.forEach((d,k)=>d.classList.toggle('DotsPagination_dot_active__YmMbn',k===i));});
+    let d=null;
+    t.addEventListener('pointerdown',e=>{e.stopPropagation(); if(e.button) return; d={x:e.clientX,y:e.clientY,s:t.scrollLeft,i:Math.round(t.scrollLeft/t.clientWidth),m:false,id:e.pointerId};});
+    t.addEventListener('pointermove',e=>{ if(!d) return; const dx=e.clientX-d.x;
+      if(!d.m){ if(Math.abs(dx)<6) return; if(Math.abs(e.clientY-d.y)>Math.abs(dx)){d=null;return;} d.m=true; t.setPointerCapture(d.id); t.style.scrollSnapType='none'; }
+      const n=t.children.length-1, max=n*t.clientWidth; let v=d.s-dx; if(v<0) v=v/3; if(v>max) v=max+(v-max)/3; t.scrollLeft=v; e.preventDefault(); });
+    const end=e=>{ if(!d) return; const m=d.m, dx=e.clientX-d.x, n=t.children.length-1; let i=d.i;
+      if(m){ if(dx<-40) i=Math.min(n,d.i+1); else if(dx>40) i=Math.max(0,d.i-1);
+        t.scrollTo({left:i*t.clientWidth,behavior:'smooth'}); setTimeout(()=>t.style.scrollSnapType='',350);
+        t._drag=Date.now(); }
+      d=null; };
+    t.addEventListener('pointerup',end); t.addEventListener('pointercancel',end);
+    t.addEventListener('click',e=>{ if(Date.now()-(t._drag||0)<300){e.stopPropagation();e.preventDefault();} },true);
+    g.querySelectorAll('.tz').forEach(z=>z.addEventListener('click',e=>{e.stopPropagation();t.scrollBy({left:+z.dataset.tz*t.clientWidth,behavior:'smooth'});}));
+  });
+}
+
+/* ---------- SERP ---------- */
+function renderSerp(){
+  const list=S.area?H.filter(h=>S.area.includes(h.id)):H;
+  $('areaSlot').innerHTML=S.area?`<div class="areachip"><span>${list.length} ${plural(list.length,'вариант','варианта','вариантов')} в области карты</span><b id="resetArea">Сбросить</b></div>`:'';
+  $('serpList').innerHTML=topN(list,30).map(h=>card(h)).join(''); bindGallery($('serpList'));
+  const r=$('resetArea'); if(r) r.onclick=()=>{S.area=null;renderSerp();};
+}
+
+/* ---------- карта ---------- */
+let map, markers={}, programmatic=false;
+const groups=()=>{const m=new Map();H.forEach(h=>{const k=h.ll.join(',');if(!m.has(k))m.set(k,[]);m.get(k).push(h)});return [...m.entries()].map(([k,hs])=>({k,hs,ll:hs[0].ll}));};
+function markerHTML(g){
+  const hs=g.hs, min=Math.min(...hs.map(h=>h.p)), isSel=S.group===g.k||hs.some(h=>h.id===S.sel), isFav=hs.some(h=>fav.has(h.id));
+  if(hs.length>1){
+    return `<a class="HotelMarkerIcon_root__2aRo1 HotelMarkerGroup_root__tgwGH ${isSel?'HotelMarkerIcon_root_isHighlighted___kk_W HotelMarkerGroup_root_isHighlighted__5SIDO':''} ${isFav?'HotelMarkerGroup_root_isFavorite__2QqBM':''}">${isFav?'<span class="HotelMarkerGroup_icon__4OoVl HotelMarkerGroup_icon_isFavorite__s_9qh"></span>':''}${hs.length} от ${rub(min)}</a>`;
+  }
+  const h=hs[0], guru=!!h.g;
+  return `<a class="HotelMarkerIcon_root__2aRo1 HotelMarker_root__75tf6 ${guru?'HotelMarker_root_isGuru__MHSG3 HotelMarkerIcon_root_isGuru__X4oQZ':''} ${isSel?'HotelMarkerIcon_root_isHighlighted___kk_W HotelMarker_root_isHighlighted__viBUO':''} ${isFav?'HotelMarker_root_isFavorite__aPdst':''}">${isFav?'<span class="HotelMarker_icon__nlnBN HotelMarker_icon_isFavorite__dwMMV"></span>':''}${guru&&!isFav?`<span class="HotelMarker_icon__nlnBN HotelMarker_icon_isGuru__ZqBUs">${isSel?IC.guruHi:IC.guru}</span>`:''}${guru?`<span class="HotelMarker_guruPrice__ERItg">${rub(h.p)}</span>`:rub(h.p)}</a>`;
+}
+let layer=null;
+const topN=(l,n)=>[...l].sort((a,b)=>prio(b)-prio(a)).slice(0,n);
+const prio=h=>(h.top?3:0)+(h.g?1.5:0)+parseFloat(h.r.replace(',','.'))+(h.mock?0:2)+((h.id*7919)%13)/13;
+const pinW=g=>g.hs.length>1?30+String(g.hs.length).length*8+rub(Math.min(...g.hs.map(h=>h.p))).length*8.5:(g.hs[0].g?44:20)+rub(g.hs[0].p).length*8.5;
+function drawMarkers(){
+  if(!map) return;
+  if(!layer) layer=L.layerGroup().addTo(map); layer.clearLayers(); markers={};
+  const sz=map.getSize(), z=map.getZoom(), pad=60;
+  const gs=groups().map(g=>({...g,pt:map.latLngToContainerPoint(g.ll),pr:Math.max(...g.hs.map(prio))+(g.hs.length>1?1:0)}))
+    .filter(g=>g.pt.x>-pad&&g.pt.x<sz.x+pad&&g.pt.y>-pad&&g.pt.y<sz.y+pad);
+  const forced=g=>S.group===g.k||g.hs.some(h=>h.id===S.sel||fav.has(h.id));
+  gs.sort((a,b)=>(forced(b)-forced(a))||(b.pr-a.pr));
+  // сколько цен помещается — растёт с зумом, как на проде
+  const cap=Math.round(z<10.5?3:z<11.5?7:z<12.5?12:z<13.5?20:60);
+  const boxes=[], pins=[], dots=[];
+  const hit=b=>boxes.some(o=>b.x1<o.x2+4&&b.x2>o.x1-4&&b.y1<o.y2+3&&b.y2>o.y1-3);
+  for(const g of gs){
+    const w=pinW(g), b={x1:g.pt.x-w/2,x2:g.pt.x+w/2,y1:g.pt.y-34,y2:g.pt.y};
+    const onScr=b.x1>2&&b.x2<sz.x-2&&b.y1>190&&b.y2<sz.y-Math.max(110,bottomReserve()-30);
+    if(forced(g)||(onScr&&pins.length<cap&&!hit(b))){ boxes.push(b); pins.push(g); } else dots.push(g);
+  }
+  const dotIcon=L.divIcon({className:'',html:'<div class="HotelMarkerDot_root__K5H6e"></div>',iconSize:[0,0]});
+  // фоновые точки: на мелком зуме прореживаем, под ценами не рисуем
+  const keep=z<10.5?.25:z<11.5?.45:z<12.5?.7:1, taken=[];
+  const free=p=>!boxes.some(o=>p.x>o.x1-2&&p.x<o.x2+2&&p.y>o.y1-2&&p.y<o.y2+4)&&!taken.some(q=>Math.abs(q.x-p.x)<7&&Math.abs(q.y-p.y)<7);
+  for(const d of DOTS){ if(d.w>keep) continue; const p=map.latLngToContainerPoint(d.ll); if(p.x<-20||p.x>sz.x+20||p.y<-20||p.y>sz.y+20||!free(p)) continue; taken.push(p); L.marker(d.ll,{interactive:false,icon:dotIcon}).addTo(layer); }
+  for(const g of dots){ const p=g.pt; if(!free(p)) continue; taken.push(p); const m=L.marker(g.ll,{icon:dotIcon}).addTo(layer); m.on('click',()=>tapGroup(g.k)); }
+  for(const g of pins){ const html=`<div class="mk">${markerHTML(g)}</div>`;
+    const m=L.marker(g.ll,{icon:L.divIcon({className:'',html,iconSize:[0,0]}),zIndexOffset:forced(g)?1000:Math.round(g.pr*10)}).addTo(layer);
+    m.on('click',()=>tapGroup(g.k)); markers[g.k]=m; }
+}
+function initMap(){
+  if(map){map.invalidateSize();return;}
+  map=L.map('map',{zoomControl:false,attributionControl:false,zoomSnap:0.25}).setView([55.762,37.640],11.75);
+  L.tileLayer('https://tiles.fastrovok.net/api/v1/t/ostrovok/ru/{z}/{x}/{y}.png',{maxZoom:18}).addTo(map);
+  const z=L.control.zoom({position:'topright',zoomInText:IC.plus,zoomOutText:IC.minus}); z.addTo(map); z.getContainer().classList.add('Zoom_root__k81Rs');
+  drawMarkers();
+  map.on('zoomend moveend',()=>drawMarkers());
+  map.on('moveend',()=>{ if(programmatic){programmatic=false;return;} onMoved(); });
+  map.on('click',()=>{ if(V==='B')return; S.sel=null; S.group=null; closeGroupSheet(); renderBottom(); drawMarkers(); });
+}
+function bottomReserve(){ return V==='B'?260:V==='C'?(S.sheet==='full'?600:S.sheet==='half'?360:150):110; }
+function visible(){
+  const sz=map.getSize();
+  return H.filter(h=>{const p=map.latLngToContainerPoint(h.ll);return p.x>8&&p.x<sz.x-8&&p.y>160&&p.y<sz.y-bottomReserve();});
+}
+function flyTo(ll,reserve){ const sz=map.getSize(), p=map.latLngToContainerPoint(ll); const targetY=160+(sz.y-reserve-160)/2;
+  if(p.y<160||p.y>sz.y-reserve||p.x<20||p.x>sz.x-20){ programmatic=true; map.panBy([p.x-sz.x/2,p.y-targetY],{animate:true}); } }
+
+/* ---------- низ карты по вариантам ---------- */
+function renderBottom(){
+  const mb=$('mapBottom');
+  if(V==='B'){
+    const vis=topN(S.area?H.filter(h=>S.area.includes(h.id)):visible(),20).sort((a,b)=>a.ll[1]-b.ll[1]||a.id-b.id);
+    if(!vis.length){mb.innerHTML='';$('btnList').classList.remove('hidden');return;}
+    mb.innerHTML=`<div class="strip" id="strip">${vis.map(h=>card(h,'strip')).join('')}</div>`; bindGallery(mb);
+    const st=$('strip'); if(!vis.some(h=>h.id===S.sel)) S.sel=vis[0].id;
+    const el=st.querySelector(`[data-open="${S.sel}"]`); st.scrollLeft=el.offsetLeft-24; drawMarkers();
+    let t; st.addEventListener('scroll',()=>{clearTimeout(t);t=setTimeout(()=>{const mid=st.scrollLeft+180;let best=null,bd=1e9;
+      st.querySelectorAll('[data-open]').forEach(c=>{const d=Math.abs(c.offsetLeft+c.offsetWidth/2-mid);if(d<bd){bd=d;best=+c.dataset.open}});
+      if(best&&best!==S.sel){S.sel=best;drawMarkers();}},90)});
+    $('btnList').classList.add('hidden'); return;
+  }
+  const h=S.sel?byId(S.sel):null;
+  mb.innerHTML=h?`<div class="mcard"><div class="mclose" data-close>${IC.close}</div>${card(h,'map')}</div>`:'';
+  if(h){ const fv=mb.querySelector('.HotelGallery_favorite___39Zl'); if(fv) fv.insertAdjacentHTML('beforeend',`<div class="mclose" data-close>${IC.close}</div>`); mb.querySelector('.mcard > .mclose').remove(); }
+  bindGallery(mb);
+  if(V==='A') $('btnList').classList.toggle('hidden',!!h || S.sheet!==null);
+  if(V==='C') $('sheet').classList.toggle('hidden',!!h);
+}
+function setListBtn(){
+  const n=S.area?S.area.length:null;
+  $('btnList').innerHTML=IC.list+'Список'+(n!==null&&V!=='C'?` <span class="n">${n}</span>`:'');
+  if(V==='C'){ $('btnList').innerHTML=IC.map+'Карта'; $('btnList').classList.toggle('hidden',S.sheet!=='full'); }
+}
+
+function tapGroup(k){
+  const g=groups().find(x=>x.k===k);
+  if(V==='B'){ S.sel=g.hs[0].id; drawMarkers(); const st=$('strip'),el=st&&st.querySelector(`[data-open="${S.sel}"]`); if(el) st.scrollTo({left:el.offsetLeft-24,behavior:'smooth'}); else renderBottom();
+    if(g.hs.length>1) toast(`${g.hs.length} ${plural(g.hs.length,'вариант','варианта','вариантов')} в этой точке — листайте`); return; }
+  if(g.hs.length>1){ S.sel=null; S.group=k; drawMarkers(); renderBottom(); openSheet(`${g.hs.length} ${plural(g.hs.length,'доступный вариант','доступных варианта','доступных вариантов')} в этой точке`, g.hs, V==='C'?'half':'group'); return; }
+  S.group=null; S.sel=g.hs[0].id; if(V==='A') closeGroupSheet(); else setSheet('peek');
+  drawMarkers(); renderBottom(); flyTo(g.ll, V==="C"?500:480);
+}
+
+/* ---------- шторка ---------- */
+const POS={full:0,half:330,peek:540,group:0};
+function openSheet(title,list,pos){
+  $('shTitle').textContent=title; $('shList').innerHTML=`<div class="list">${topN(list,30).map(h=>card(h)).join('')}</div>`; $('shList').scrollTop=0; bindGallery($('shList'));
+  setSheet(pos);
+}
+function setSheet(pos){
+  S.sheet=pos; const sh=$('sheet'); sh.classList.remove('hidden');
+  sh.style.transform=`translateY(${POS[pos]}px)`;
+  const dark = pos==='group'||pos==='full';
+  $('dim').classList.toggle('hidden',!dark); sh.classList.toggle('light',!dark);
+  if(pos!=='peek'&&S.sel&&V==='C'){S.sel=null;renderBottom();drawMarkers();}
+  setListBtn(); if(V==='A') $('btnList').classList.add('hidden');
+  if(V==='C') sh.classList.toggle('hidden',!!S.sel);
+  if(map) drawMarkers();
+}
+function closeGroupSheet(){ if(V==='C'){ if(S.group){S.group=null; areaSheet(); setSheet('peek');} return; } S.sheet=null; S.group=null; $('sheet').classList.add('hidden'); $('dim').classList.add('hidden'); setListBtn(); renderBottom(); }
+function areaSheet(){ const list=S.area?H.filter(h=>S.area.includes(h.id)):visible(); openSheet(`${list.length} ${plural(list.length,'вариант','варианта','вариантов')} в этой области`, list, S.sheet||'half'); }
+$('dim').onclick=()=>{ if(V==='C') setSheet('half'); else { closeGroupSheet(); drawMarkers(); } };
+(function(){ const head=$('shHead'),sh=$('sheet'); let d=null;
+  head.addEventListener('pointerdown',e=>{d={y:e.clientY,b:POS[S.sheet]||0,m:false};head.setPointerCapture(e.pointerId);sh.classList.add('drag');});
+  head.addEventListener('pointermove',e=>{if(!d)return;const dy=e.clientY-d.y;if(Math.abs(dy)>4)d.m=true;sh.style.transform=`translateY(${Math.max(0,d.b+dy)}px)`;});
+  head.addEventListener('pointerup',e=>{if(!d)return;sh.classList.remove('drag');const cur=d.b+(e.clientY-d.y);
+    if(V==='A'){ if(cur>200) {closeGroupSheet();drawMarkers();} else setSheet('group'); }
+    else if(!d.m) setSheet(S.sheet==='peek'?'half':S.sheet==='half'?'full':'peek');
+    else { let best='peek',bd=1e9; for(const k of ['full','half','peek']){const dd=Math.abs(POS[k]-cur);if(dd<bd){bd=dd;best=k}} setSheet(best); }
+    d=null;});
+})();
+
+/* ---------- связь карты и списка ---------- */
+function onMoved(){
+  const vis=visible(); S.area=vis.map(h=>h.id);
+  if(V==='B') renderBottom();
+  if(V==='C' && !S.group) areaSheet();
+  setListBtn();
+}
+
+/* ---------- клики ---------- */
+document.addEventListener('click',e=>{
+  const f=e.target.closest('[data-fav]');
+  if(f){ e.preventDefault(); e.stopPropagation(); const id=+f.dataset.fav;
+    if(fav.has(id)){fav.delete(id);toast('Удалено из избранного');} else {fav.add(id);toast('Добавлено в избранное');}
+    document.querySelectorAll(`[data-fav="${id}"]`).forEach(x=>x.classList.toggle('Favorite_root_active__qUOws',fav.has(id))); if(map) drawMarkers(); return; }
+  if(e.target.closest('[data-close]')){ S.sel=null; renderBottom(); drawMarkers(); return; }
+  const o=e.target.closest('[data-open]');
+  if(o && !e.target.closest('.tz')){ const id=+o.dataset.open;
+    if(V==='B' && o.closest('.strip') && id!==S.sel){ S.sel=id; drawMarkers(); flyTo(byId(id).ll,260); o.parentElement.scrollTo({left:o.offsetLeft-24,behavior:'smooth'}); return; }
+    toast('→ Страница отеля'); }
+},true);
+
+function toast(t){const el=$('toast');el.textContent=t;el.classList.add('show');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('show'),1500);}
+
+/* ---------- навигация ---------- */
+function showMap(){ $('serp').classList.add('hidden'); $('mapView').classList.remove('hidden'); initMap(); setTimeout(()=>{ map.invalidateSize(); if(V==='B'&&!S.area) S.area=null; renderBottom(); drawMarkers(); setListBtn(); },0); }
+$('serpScroll').addEventListener('scroll',()=>{ const sl=$('areaSlot'); if(!sl.firstChild) return; const t=sl.getBoundingClientRect().top-$('serpScroll').getBoundingClientRect().top; sl.classList.toggle('stuck',t<=0.5 && $('serpScroll').scrollTop>0); });
+function showSerp(){ $('mapView').classList.add('hidden'); $('serp').classList.remove('hidden'); renderSerp(); $('serpScroll').scrollTop=0; }
+$('btnMap').onclick=showMap;
+$('btnList').onclick=()=>{ if(V==='C'){ setSheet('peek'); return; } showSerp(); };
+
+renderSerp(); setListBtn();
+if(V==='C'){ showMap(); setTimeout(()=>{ S.area=visible().map(h=>h.id); areaSheet(); setSheet('half'); },50); }
+</script>
+</body>
+</html>

@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Карта в mobile web</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f4f5f7; --ink:#1b1c1f; --muted:#6b7280; --line:#e3e5ea;
+  --blue:#1f40d8; --blue-soft:#e9edff; --green:#36a845; --green-t:#2f9a3c; --red:#e5484d; --amber:#f39c12;
+  --screen:#eff0f2; --r:16px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 Onest,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1200px;margin:0 auto;padding:40px 24px 80px}
+h1{font-size:30px;line-height:1.2;margin:0 0 8px}
+h2{font-size:22px;margin:56px 0 16px}
+h3{font-size:16px;margin:0 0 6px}
+p{margin:0 0 10px}
+.lead{color:var(--muted);max-width:780px}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+
+/* ---------- как сейчас / основа ---------- */
+.shots{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.shot{background:#fff;border-radius:var(--r);padding:10px;border:1px solid var(--line)}
+.shot img{width:100%;border-radius:10px;display:block;aspect-ratio:375/812;object-fit:cover;object-position:top}
+.shot b{display:block;margin:10px 4px 2px;font-size:14px}
+.shot span{display:block;margin:0 4px 4px;font-size:13px;color:var(--muted)}
+.probs{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px}
+.prob{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px}
+.prob .m{display:inline-block;font-size:12px;font-weight:600;color:var(--blue);background:var(--blue-soft);border-radius:6px;padding:1px 7px;margin-top:6px}
+.base{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;align-items:start}
+.base img{width:100%;border-radius:12px;display:block;border:1px solid var(--line)}
+.base .txt{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:18px 20px}
+.base ul{margin:6px 0 0;padding-left:18px}.base li{margin:3px 0}
+
+/* ---------- варианты ---------- */
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+.tab{border:1px solid var(--line);background:#fff;border-radius:12px;padding:10px 16px;cursor:pointer;font:inherit;text-align:left}
+.tab b{display:block;font-size:15px}
+.tab span{font-size:13px;color:var(--muted)}
+.tab.on{border-color:var(--blue);box-shadow:0 0 0 1px var(--blue);background:var(--blue-soft)}
+.stage{display:grid;grid-template-columns:400px 1fr;gap:36px;align-items:start}
+.why{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:22px 24px}
+.why h3{margin-top:16px}.why h3:first-child{margin-top:0}
+.why ul{margin:0;padding-left:18px}.why li{margin:3px 0}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.tag{font-size:12px;font-weight:600;border-radius:6px;padding:2px 8px;background:#eef7ee;color:#21752a}
+.tag.mid{background:#fff4dc;color:#94640a}
+.try{margin-top:16px;padding:12px 14px;border-radius:12px;background:var(--bg);font-size:13px}
+.opts{margin-top:14px;display:flex;gap:16px;flex-wrap:wrap;font-size:14px}
+.opts label{display:flex;gap:6px;align-items:center;cursor:pointer}
+
+/* ---------- телефон ---------- */
+.dev{width:376px;height:760px;border:8px solid #4d5053;border-radius:48px;overflow:hidden;background:#fff;position:sticky;top:20px;box-shadow:0 20px 50px rgba(0,0,0,.15)}
+.dev iframe{display:block;border:0;border-radius:40px}
+.phone{width:400px;height:812px;border-radius:52px;background:#2a2c31;padding:12px;position:sticky;top:20px;box-shadow:0 20px 50px rgba(0,0,0,.18)}
+.screen{width:376px;height:788px;border-radius:42px;overflow:hidden;position:relative;background:var(--screen);user-select:none;-webkit-user-select:none}
+.status{position:absolute;left:0;right:0;top:0;height:44px;background:#fff;display:flex;justify-content:space-between;align-items:center;padding:0 30px 0 36px;font-weight:600;font-size:15px;z-index:70}
+.status .sig{font-size:12px;font-weight:600;display:flex;gap:5px;align-items:center}
+.status .bat{width:24px;height:12px;border-radius:3px;border:1.5px solid #1b1c1f;position:relative}
+.status .bat:after{content:"";position:absolute;inset:1.5px;background:#1b1c1f;border-radius:1px}
+.browser{position:absolute;left:0;right:0;bottom:0;height:46px;background:#ececee;display:flex;justify-content:center;align-items:flex-start;padding-top:9px;font-size:13px;color:#3b3d42;z-index:70;gap:5px}
+.content{position:absolute;left:0;right:0;top:44px;bottom:46px;overflow:hidden}
+.view{position:absolute;inset:0}
+.hidden{display:none!important}
+svg.i{width:20px;height:20px;flex:0 0 auto;display:block}
+
+/* SERP */
+.serp-scroll{position:absolute;inset:0;overflow-y:auto;scrollbar-width:none;padding-bottom:90px}
+.serp-scroll::-webkit-scrollbar{display:none}
+.appbar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px 12px;background:#fff}
+.logo{font-weight:700;font-size:26px;color:var(--blue);letter-spacing:-.6px}
+.appicons{display:flex;gap:14px;align-items:center}
+.q{width:22px;height:22px;border-radius:50%;background:var(--blue);color:#fff;font-size:14px;font-weight:700;display:grid;place-items:center}
+.gu{width:24px;height:24px;border-radius:50%;background:#c8f0a0;display:grid;place-items:center;color:var(--blue)}
+.search{margin:10px 8px 0;background:#fff;border-radius:12px;padding:8px 12px;display:flex;gap:10px;align-items:center}
+.search b{font-weight:500;font-size:14px;display:block;line-height:1.2}
+.search span{font-size:12px;color:#3b3d42}
+.chips{display:flex;gap:8px;padding:12px 8px;overflow-x:auto;scrollbar-width:none;align-items:center}
+.chips::-webkit-scrollbar{display:none}
+.chips .fi{flex:0 0 auto;width:28px;display:grid;place-items:center}
+.chip{flex:0 0 auto;background:#fff;border-radius:10px;padding:7px 10px;font-size:14px;font-weight:500;white-space:nowrap}
+.count{padding:0 12px 8px;font-weight:600;font-size:15px}
+.areachip{margin:0 8px 10px;background:var(--blue-soft);color:var(--blue);border-radius:12px;padding:9px 12px;font-size:13px;display:flex;justify-content:space-between;align-items:center;font-weight:500}
+.areachip button{border:0;background:none;color:var(--blue);font:inherit;font-weight:600;cursor:pointer;padding:0}
+
+/* карточка отеля (по макету) */
+.hc{background:#fff;border-radius:16px;margin:0 8px 12px;padding:4px;cursor:pointer}
+.hc .ph{height:200px;border-radius:12px}
+.hc-info{padding:10px 8px 8px}
+.hc-top{display:flex;justify-content:space-between;gap:8px}
+.hc-l{min-width:0;flex:1}
+.stars{color:var(--amber);font-size:11px;letter-spacing:.5px;line-height:1;height:11px}
+.hc-name{font-weight:600;font-size:19px;line-height:1.25;margin-top:3px;display:flex;gap:8px;align-items:center;justify-content:space-between}
+.hc-name span.t{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.top{flex:0 0 auto;background:linear-gradient(90deg,#4b4fd6,#8b5cf6);color:#fff;font-size:11px;font-weight:700;border-radius:5px;padding:1px 5px;font-style:italic}
+.hc-info{position:relative}
+.hc-l{padding-right:44px}
+.hc-r{position:absolute;right:8px;top:10px;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.flag{background:var(--green);color:#fff;font-weight:600;font-size:14px;padding:3px 5px 8px;clip-path:polygon(0 0,100% 0,100% 100%,50% 80%,0 100%);min-width:30px;text-align:center}
+.cm{display:flex;gap:3px;align-items:center;font-size:13px;color:#3b3d42}
+.g{color:#6b6e75;font-size:15px;line-height:1.35}
+.gr{color:var(--green-t);font-size:15px}
+.guru{color:var(--blue);font-size:15px;margin-top:12px;display:flex;gap:4px;align-items:center}
+.guru b{font-weight:700;letter-spacing:.3px}
+.pr{margin-top:4px;display:flex;gap:6px;align-items:center}
+.pr b{font-size:21px;font-weight:600}
+.pr s{color:#8a8d93;font-size:13px}
+.disc{background:#c8f3b4;color:#1d6b24;font-size:12px;font-weight:600;border-radius:5px;padding:0 4px}
+.per{color:#6b6e75;font-size:14px}
+.pr + .per{margin-top:0}
+
+/* компактная карточка на карте */
+.hc.compact{margin:0;box-shadow:0 8px 28px rgba(0,0,0,.22)}
+.hc.compact .ph{height:140px}
+.hc.compact .hc-name{font-size:17px}
+.hc.compact .g{font-size:14px}
+.hc.compact .pr b{font-size:19px}
+.mcard{position:absolute;left:8px;right:8px;bottom:74px;z-index:25}
+.mcard .x{position:absolute;right:4px;top:-44px;width:36px;height:36px;border-radius:50%;background:#fff;display:grid;place-items:center;box-shadow:0 2px 8px rgba(0,0,0,.2);font-size:16px;color:#555;cursor:pointer}
+
+/* фото */
+.ph{position:relative;overflow:hidden;background:#222}
+.phs{display:flex;height:100%;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}
+.phs::-webkit-scrollbar{display:none}
+.phs > div{flex:0 0 100%;scroll-snap-align:start;height:100%;position:relative}
+.dots{position:absolute;left:0;right:0;bottom:8px;display:flex;justify-content:center;gap:5px;pointer-events:none}
+.dots i{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.5)}
+.dots i.on{background:#fff}
+.ptags{position:absolute;left:8px;top:8px;display:flex;gap:4px;z-index:2;pointer-events:none}
+.ptags span{background:rgba(30,30,32,.72);color:#fff;font-size:12px;border-radius:6px;padding:2px 6px}
+.heart{position:absolute;right:8px;top:8px;width:32px;height:32px;border-radius:8px;background:rgba(240,240,242,.9);display:grid;place-items:center;cursor:pointer;z-index:3;color:#3b3d42;transition:transform .15s}
+.heart.on{color:var(--red)}
+.heart:active{transform:scale(.88)}
+.tapzone{position:absolute;top:0;bottom:0;width:40%;z-index:2}
+.tapzone.l{left:0}.tapzone.r{right:0}
+.bld{position:absolute;left:12%;right:12%;bottom:12%;top:34%;border-radius:6px 6px 0 0;
+  background:repeating-linear-gradient(90deg,transparent 0 9px,rgba(0,0,0,.25) 9px 12px),repeating-linear-gradient(0deg,rgba(255,196,110,.55) 0 4px,transparent 4px 13px)}
+.bld:before{content:"";position:absolute;left:30%;right:30%;top:-22%;height:24%;border-radius:40% 40% 0 0;background:rgba(255,200,120,.35)}
+.road{position:absolute;left:0;right:0;bottom:0;height:14%;background:linear-gradient(90deg,transparent,rgba(255,80,60,.55) 30%,rgba(255,220,180,.5) 60%,transparent)}
+
+/* плавающая кнопка (по макету) */
+.pill{position:absolute;left:50%;transform:translateX(-50%);bottom:14px;background:var(--blue);color:#fff;border:0;border-radius:12px;height:46px;padding:0 20px;font:inherit;font-weight:500;font-size:17px;display:flex;gap:8px;align-items:center;box-shadow:0 4px 14px rgba(31,64,216,.35);cursor:pointer;z-index:30;white-space:nowrap}
+.pill .n{background:rgba(255,255,255,.22);border-radius:999px;padding:0 8px;font-size:13px;font-weight:600}
+
+/* карта */
+.mapvp{position:absolute;inset:0;overflow:hidden;cursor:grab;touch-action:none}
+.mapvp.drag{cursor:grabbing}
+.layer{position:absolute;left:0;top:0;width:1100px;height:1500px;will-change:transform}
+.mtop{position:absolute;left:0;right:0;top:0;z-index:20;pointer-events:none}
+.mtop .search{pointer-events:auto;box-shadow:0 2px 8px rgba(0,0,0,.12);margin-top:12px}
+.mtop .chips{pointer-events:auto}
+.mtop .chip{box-shadow:0 1px 6px rgba(0,0,0,.12)}
+.mtop .fi{background:#fff;border-radius:10px;width:36px;height:34px;box-shadow:0 1px 6px rgba(0,0,0,.12)}
+.pin{position:absolute;transform:translate(-50%,-100%);background:#fff;color:var(--ink);border-radius:8px;padding:5px 8px;font-weight:600;font-size:14px;box-shadow:0 1px 5px rgba(0,0,0,.25);white-space:nowrap;cursor:pointer;display:flex;gap:4px;align-items:center;transition:background .15s,color .15s,transform .15s}
+.pin.viewed{color:#8a8d93}
+.pin.sel{background:var(--blue);color:#fff;transform:translate(-50%,-100%) scale(1.08);z-index:5}
+.pin .hz{color:var(--red);font-size:12px}
+.pin.sel .hz{color:#fff}
+.searchhere{position:absolute;left:50%;top:116px;transform:translateX(-50%);background:#fff;border-radius:10px;padding:8px 14px;font-weight:500;font-size:14px;box-shadow:0 2px 12px rgba(0,0,0,.18);z-index:21;cursor:pointer;white-space:nowrap;color:var(--blue);display:flex;gap:6px;align-items:center}
+.livechip{position:absolute;left:50%;top:116px;transform:translateX(-50%);background:#1b1c1f;color:#fff;border-radius:10px;padding:7px 12px;font-weight:500;font-size:13px;z-index:21;white-space:nowrap;opacity:0;transition:opacity .2s;pointer-events:none}
+.livechip.show{opacity:.9}
+
+/* лента (B) */
+.carousel{position:absolute;left:0;right:0;bottom:72px;display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;padding:0 24px;z-index:25;scrollbar-width:none}
+.carousel::-webkit-scrollbar{display:none}
+.cc{flex:0 0 318px;scroll-snap-align:center;background:#fff;border-radius:14px;box-shadow:0 6px 20px rgba(0,0,0,.2);overflow:hidden;cursor:pointer;display:flex;height:150px;padding:4px;gap:2px}
+.cc .ph{width:118px;flex:0 0 118px;height:142px;border-radius:10px}
+.cc .heart{width:28px;height:28px;right:5px;top:5px;border-radius:7px}
+.cc .dots{bottom:6px}.cc .dots i{width:5px;height:5px}
+.cc .body{padding:4px 8px 4px;display:flex;flex-direction:column;justify-content:space-between;min-width:0;flex:1}
+.cc .nm{font-weight:600;font-size:15px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-top:3px}
+.cc .rt{display:flex;gap:6px;align-items:center;font-size:13px;color:#3b3d42;margin-top:4px}
+.cc .rt .fl{background:var(--green);color:#fff;font-weight:600;font-size:12px;border-radius:5px;padding:0 5px}
+.cc .pr b{font-size:17px}
+.cc .per{font-size:12px}
+
+/* шторка */
+.sheet{position:absolute;left:0;right:0;bottom:0;height:676px;background:var(--screen);border-radius:18px 18px 0 0;box-shadow:0 -4px 20px rgba(0,0,0,.16);z-index:26;transition:transform .28s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column}
+.sheet.dragging{transition:none}
+.sh-head{padding:8px 12px 10px;cursor:grab;touch-action:none;background:#fff;border-radius:18px 18px 0 0}
+.grab{width:40px;height:4px;border-radius:2px;background:#cfd2d8;margin:0 auto 12px}
+.sh-head b{font-size:17px;font-weight:600}
+.sh-head .sub{font-size:13px;color:var(--muted)}
+.sh-list{flex:1;overflow-y:auto;padding-top:8px;scrollbar-width:none;padding-bottom:90px;background:#fff}
+.sh-list::-webkit-scrollbar{display:none}
+.sh-list .hc{border:1px solid #eceef1}
+
+/* мини-карта */
+.minimap{margin:0 8px 12px;height:116px;border-radius:16px;overflow:hidden;position:relative;cursor:pointer;background:#ededeb}
+.minimap .mpin{position:absolute;background:#fff;border-radius:7px;padding:2px 6px;font-size:12px;font-weight:600;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+.minimap .mm-btn{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);background:var(--blue);color:#fff;border-radius:10px;padding:7px 14px;font-weight:500;font-size:14px;display:flex;gap:6px;align-items:center;white-space:nowrap}
+
+.toast{position:absolute;left:50%;top:150px;transform:translate(-50%,-10px);background:#1b1c1f;color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;z-index:80;opacity:0;transition:all .2s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:.95;transform:translate(-50%,0)}
+
+/* ---------- сравнение ---------- */
+table{border-collapse:collapse;width:100%;background:#fff;border-radius:var(--r);overflow:hidden;border:1px solid var(--line)}
+th,td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--line);font-size:14px;vertical-align:top}
+th{background:#fafbfc;font-weight:600}
+tr:last-child td{border-bottom:0}
+.rec{background:#fff;border:2px solid var(--blue);border-radius:var(--r);padding:20px 24px;margin-top:20px}
+.rec ol{margin:6px 0 0;padding-left:20px}.rec li{margin:4px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="stage">
+  <div>
+    <div class="dev"><iframe id="ph" src="phone.html?v=A&t=0" width="360" height="744" title="Прототип"></iframe></div>
+  </div>
+  <div class="why" id="why">
+<ul>
+<li><b>Синяя кнопка «Карта»</b> из макета закреплена на любой глубине скролла. Это главный рычаг для CR SERP → Map: сейчас вход пропадает после первого экрана.</li>
+<li><b>Тап по одиночному пину → компактная карточка</b> в стиле карточки выдачи: листаются фото, рейтинг и отзывы, цена за 3 ночи / 2 гостей, ♡. В макете есть только сценарий с группой.</li>
+<li><b>Тап по группе → шторка</b> «N доступных вариантов в этой точке», как в макете.</li>
+<li><b>Связь со списком:</b> сдвинул карту → на «Список» сразу число отелей в кадре, список показывает только их.</li>
+<li>Избранные отели отмечаются на пине (состояние пина с прода).</li>
+</ul>
+  </div>
+</div>
+</div>
+<script>document.getElementById('ph').src='phone.html?v=A&t='+Date.now();</script>
+</body>
+</html>
