@@ -1,0 +1,13 @@
+/* Избранное: сердечко без плюса + 5 анимаций лайка */
+.Favorite_root__qyOOi{background-image:none!important;display:grid;place-items:center;position:relative;overflow:hidden;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.Favorite_root_active__qUOws{background-color:#cd1717}
+.lk-w{position:relative;width:20px;height:20px;display:block;z-index:1}
+.lk-w svg{position:absolute;inset:0;width:20px;height:20px;overflow:visible;display:block}
+.lk-o path{fill:none;stroke:#2d3137;stroke-width:1.9;stroke-linejoin:round}
+.lk-f{transform:scale(0)}
+.lk-f path{fill:#fff}
+.Favorite_root_active__qUOws .lk-o path{stroke:#fff}
+.Favorite_root_active__qUOws .lk-f{transform:scale(1)}
+#lkfx{position:fixed;inset:0;pointer-events:none;z-index:1600;overflow:hidden}
+#lkfx>*{position:absolute;left:0;top:0;will-change:transform,opacity}
+.lk-badge{position:absolute;right:-6px;top:-5px;min-width:16px;height:16px;padding:0 4px;box-sizing:border-box;border-radius:8px;background:#cd1717;color:#fff;font:700 12px/16px "PT Root UI Web",Arial,sans-serif;text-align:center;border:1.5px solid #fff}

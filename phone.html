@@ -111,6 +111,7 @@ body{font-family:"PT Root UI Web",Helvetica,Arial,sans-serif;background:#f2f1f0;
 .toast{position:absolute;left:50%;top:210px;transform:translate(-50%,-8px);background:#2d3137;color:#fff;padding:8px 14px;border-radius:12px;font-size:14px;line-height:20px;z-index:1500;opacity:0;transition:all .2s;pointer-events:none;white-space:nowrap}
 .toast.show{opacity:.95;transform:translate(-50%,0)}
 </style>
+<link rel="stylesheet" href="like.css">
 </head>
 <body>
 <img id="status" src="prod/fig-statusbar.svg" alt="">
@@ -143,6 +144,7 @@ body{font-family:"PT Root UI Web",Helvetica,Arial,sans-serif;background:#f2f1f0;
 <div class="toast" id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="like.js"></script>
 <script>
 const V=(new URLSearchParams(location.search).get('v')||'A').toUpperCase();
 const $=id=>document.getElementById(id);
@@ -171,6 +173,10 @@ const IC={
 /* шапка — разметка прода */
 const ctl=svg=>`<div class="clickOutside"><button class="Wrapper_control__UfBmt" style="background:none;border:0;padding:0"><div class="PopupControl_root__6gBTn"><div class="PopupControl_icon__njWnD">${svg}</div></div></button></div>`;
 $('widgets').innerHTML=ctl(IC.heart)+ctl(IC.bell)+ctl(IC.help)+ctl(IC.user)+ctl(IC.burger);
+const LIKE=2; // анимация избранного: «Сердечки»
+const favIcon=()=>$('widgets').querySelector('.PopupControl_icon__njWnD');
+window.LikeTarget=()=>{ const el=favIcon(); if(!el||$('serp').classList.contains('hidden')) return null; const r=el.getBoundingClientRect(); return r.bottom>0&&r.top<innerHeight?el:null; };
+function favBadge(delay){ setTimeout(()=>{ const el=favIcon(); el.style.position='relative'; let b=el.querySelector('.lk-badge'); if(!fav.size){ if(b) b.remove(); return; } if(!b){ b=document.createElement('span'); b.className='lk-badge'; el.appendChild(b);} b.textContent=fav.size; },delay); }
 
 /* блок поиска + фильтров — Figma */
 const sfHTML=`<div class="sf-search">${IC.search}<b>Москва</b><span>9 дек – 12 дек, 2 взрослых, 1 номер</span></div>
@@ -243,7 +249,7 @@ function card(h,mode='list'){
     ${mode==='strip'?'<div class="tz l" data-tz="-1"></div><div class="tz r" data-tz="1"></div>':''}
     <div class="HotelGallery_galleryContent__hbYrS">
       ${h.free&&mode!=='strip'?'<div class="HotelGallery_valueAddsMobile__zKyhi"><span class="ValueAdds_mobileItem__M8zBT">Бесплатная отмена</span></div>':''}
-      <div class="HotelGallery_favorite___39Zl"><div><div class="Favorite_root__qyOOi ${fav.has(h.id)?'Favorite_root_active__qUOws':''}" data-fav="${h.id}"></div></div></div>
+      <div class="HotelGallery_favorite___39Zl"><div><div class="Favorite_root__qyOOi ${fav.has(h.id)?'Favorite_root_active__qUOws':''}" data-fav="${h.id}">${Like.svg}</div></div></div>
     </div>
   </div>
   <a class="RightColumn_info__E1rIP">
@@ -293,18 +299,19 @@ function renderSerp(){
 /* ---------- карта ---------- */
 let map, markers={}, programmatic=false;
 const groups=()=>{const m=new Map();H.forEach(h=>{const k=h.ll.join(',');if(!m.has(k))m.set(k,[]);m.get(k).push(h)});return [...m.entries()].map(([k,hs])=>({k,hs,ll:hs[0].ll}));};
+const favPin=`<svg viewBox="-2 -2 24 24" width="20" height="20" style="display:block"><path fill="#cd1717" d="${Like.HP}"/></svg>`;
 function markerHTML(g){
   const hs=g.hs, min=Math.min(...hs.map(h=>h.p)), isSel=S.group===g.k||hs.some(h=>h.id===S.sel), isFav=hs.some(h=>fav.has(h.id));
   if(hs.length>1){
-    return `<a class="HotelMarkerIcon_root__2aRo1 HotelMarkerGroup_root__tgwGH ${isSel?'HotelMarkerIcon_root_isHighlighted___kk_W HotelMarkerGroup_root_isHighlighted__5SIDO':''} ${isFav?'HotelMarkerGroup_root_isFavorite__2QqBM':''}">${isFav?'<span class="HotelMarkerGroup_icon__4OoVl HotelMarkerGroup_icon_isFavorite__s_9qh"></span>':''}${hs.length} от ${rub(min)}</a>`;
+    return `<a class="HotelMarkerIcon_root__2aRo1 HotelMarkerGroup_root__tgwGH ${isSel?'HotelMarkerIcon_root_isHighlighted___kk_W HotelMarkerGroup_root_isHighlighted__5SIDO':''} ${isFav?'HotelMarkerGroup_root_isFavorite__2QqBM':''}">${isFav?`<span class="HotelMarkerGroup_icon__4OoVl HotelMarkerGroup_icon_isFavorite__s_9qh">${favPin}</span>`:''}${hs.length} от ${rub(min)}</a>`;
   }
   const h=hs[0], guru=!!h.g;
-  return `<a class="HotelMarkerIcon_root__2aRo1 HotelMarker_root__75tf6 ${guru?'HotelMarker_root_isGuru__MHSG3 HotelMarkerIcon_root_isGuru__X4oQZ':''} ${isSel?'HotelMarkerIcon_root_isHighlighted___kk_W HotelMarker_root_isHighlighted__viBUO':''} ${isFav?'HotelMarker_root_isFavorite__aPdst':''}">${isFav?'<span class="HotelMarker_icon__nlnBN HotelMarker_icon_isFavorite__dwMMV"></span>':''}${guru&&!isFav?`<span class="HotelMarker_icon__nlnBN HotelMarker_icon_isGuru__ZqBUs">${isSel?IC.guruHi:IC.guru}</span>`:''}${guru?`<span class="HotelMarker_guruPrice__ERItg">${rub(h.p)}</span>`:rub(h.p)}</a>`;
+  return `<a class="HotelMarkerIcon_root__2aRo1 HotelMarker_root__75tf6 ${guru?'HotelMarker_root_isGuru__MHSG3 HotelMarkerIcon_root_isGuru__X4oQZ':''} ${isSel?'HotelMarkerIcon_root_isHighlighted___kk_W HotelMarker_root_isHighlighted__viBUO':''} ${isFav?'HotelMarker_root_isFavorite__aPdst':''}">${isFav?`<span class="HotelMarker_icon__nlnBN HotelMarker_icon_isFavorite__dwMMV">${favPin}</span>`:''}${guru?`<span class="HotelMarker_icon__nlnBN HotelMarker_icon_isGuru__ZqBUs">${isSel?IC.guruHi:IC.guru}</span>`:''}${guru?`<span class="HotelMarker_guruPrice__ERItg">${rub(h.p)}</span>`:rub(h.p)}</a>`;
 }
 let layer=null;
 const topN=(l,n)=>[...l].sort((a,b)=>prio(b)-prio(a)).slice(0,n);
 const prio=h=>(h.top?3:0)+(h.g?1.5:0)+parseFloat(h.r.replace(',','.'))+(h.mock?0:2)+((h.id*7919)%13)/13;
-const pinW=g=>g.hs.length>1?30+String(g.hs.length).length*8+rub(Math.min(...g.hs.map(h=>h.p))).length*8.5:(g.hs[0].g?44:20)+rub(g.hs[0].p).length*8.5;
+const pinW=g=>(g.hs.some(h=>fav.has(h.id))?21:0)+(g.hs.length>1?30+String(g.hs.length).length*8+rub(Math.min(...g.hs.map(h=>h.p))).length*8.5:(g.hs[0].g?44:20)+rub(g.hs[0].p).length*8.5);
 function drawMarkers(){
   if(!map) return;
   if(!layer) layer=L.layerGroup().addTo(map); layer.clearLayers(); markers={};
@@ -427,8 +434,9 @@ function onMoved(){
 document.addEventListener('click',e=>{
   const f=e.target.closest('[data-fav]');
   if(f){ e.preventDefault(); e.stopPropagation(); const id=+f.dataset.fav;
-    if(fav.has(id)){fav.delete(id);toast('Удалено из избранного');} else {fav.add(id);toast('Добавлено в избранное');}
-    document.querySelectorAll(`[data-fav="${id}"]`).forEach(x=>x.classList.toggle('Favorite_root_active__qUOws',fav.has(id))); if(map) drawMarkers(); return; }
+    if(fav.has(id)){fav.delete(id);toast('Удалено из избранного');} else fav.add(id);
+    document.querySelectorAll(`[data-fav="${id}"]`).forEach(x=>x.classList.toggle('Favorite_root_active__qUOws',fav.has(id)));
+    Like.play(f,fav.has(id),LIKE); favBadge(0); if(map) drawMarkers(); return; }
   if(e.target.closest('[data-close]')){ S.sel=null; renderBottom(); drawMarkers(); return; }
   const o=e.target.closest('[data-open]');
   if(o && !e.target.closest('.tz')){ const id=+o.dataset.open;
