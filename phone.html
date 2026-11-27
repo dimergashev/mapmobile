@@ -73,6 +73,16 @@ body{font-family:"PT Root UI Web",Helvetica,Arial,sans-serif;background:#f2f1f0;
 .mtop{position:absolute;left:8px;right:8px;top:12px;z-index:1100;pointer-events:none}
 .mtop > *{pointer-events:auto}
 .mtop .sf-chips{margin-top:12px;margin-right:-8px}
+/* карта: «Назад» слева от поиска — белая плашка той же высоты (48), по ширине — по содержимому (иконка 20 + поля 8), шеврон влево Icons/UI ArrowLeft (worldota), цвет иконки поиска */
+.sf-row{display:flex;gap:8px}
+.sf-row .sf-search{flex:1;min-width:0}
+.sf-back{flex:none;width:auto;height:48px;padding:0 8px;border:0;border-radius:12px;background:#fff;color:#464A4F;display:flex;align-items:center;justify-content:center;cursor:pointer}
+/* тач-режим (мышь как палец): без выделения текста, курсор — точка касания */
+html.tch,html.tch *{cursor:none!important;-webkit-user-select:none;user-select:none;-webkit-user-drag:none}
+#tdot{position:fixed;left:0;top:0;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;background:rgba(45,49,55,.18);border:1px solid rgba(45,49,55,.28);
+  pointer-events:none;z-index:99999;transition:transform .12s ease,background .12s ease;display:none}
+html.tch #tdot{display:block}
+#tdot.down{transform:scale(.8);background:rgba(45,49,55,.32)}
 .leaflet-right .leaflet-control-zoom{margin-right:8px}
 .leaflet-top.leaflet-right{top:240px}
 .Zoom_root__k81Rs a{display:flex!important;align-items:center;justify-content:center}
@@ -163,6 +173,7 @@ const IC={
  filter:'<svg width="32" height="32" viewBox="0 0 32 32" fill="none"><rect width="32" height="32" rx="12" fill="white"/><path d="M25 11.9502C24.9999 12.4472 24.5966 12.8496 24.0996 12.8496L16.3193 12.8496C15.9321 14.1508 14.7267 15.0994 13.2998 15.0996C11.8729 15.0995 10.6694 14.1506 10.2822 12.8496L7.90039 12.8496C7.4034 12.8496 7.0001 12.4472 7 11.9502C7.00005 11.4532 7.40337 11.0498 7.90039 11.0498L10.2822 11.0498C10.6697 9.74908 11.8733 8.79989 13.2998 8.7998C14.7264 8.79998 15.9318 9.74893 16.3193 11.0498L24.0996 11.0498C24.5966 11.0498 24.9999 11.4532 25 11.9502ZM25 20.0498C24.9998 20.5467 24.5966 20.9492 24.0996 20.9492L21.7207 20.9492C21.3339 22.2506 20.1292 23.1999 18.7021 23.2002C17.2749 23.2002 16.0697 22.2507 15.6826 20.9492L7.90039 20.9492C7.40343 20.9492 7.00016 20.5467 7 20.0498C7.00026 19.553 7.4035 19.1494 7.90039 19.1494L15.6836 19.1494C16.0714 17.8489 17.2757 16.9004 18.7021 16.9004C20.1285 16.9006 21.3333 17.8489 21.7207 19.1494L24.0996 19.1494C24.5965 19.1494 24.9997 19.553 25 20.0498ZM14.875 11.9502C14.8749 11.0805 14.1695 10.3751 13.2998 10.375C12.4301 10.3751 11.7247 11.0805 11.7246 11.9502C11.7247 12.8199 12.4301 13.5253 13.2998 13.5254C14.1695 13.5253 14.8749 12.8199 14.875 11.9502ZM20.2764 20.0498C20.2762 19.1801 19.5709 18.4756 18.7012 18.4756C17.8315 18.4756 17.1262 19.1801 17.126 20.0498C17.126 20.9197 17.8313 21.625 18.7012 21.625C19.571 21.625 20.2764 20.9197 20.2764 20.0498Z" fill="#333333"/></svg>',
  map:'<svg width="24" height="24" viewBox="16 11 24 24" fill="none"><path d="M37.0029 13.5394C37.4891 13.3753 37.9932 13.7372 37.9932 14.2504V29.307C37.9931 29.6286 37.788 29.9149 37.4834 30.0179L31.7354 31.9603C31.5796 32.013 31.4107 32.013 31.2549 31.9603L25.748 30.099L20.2402 31.9603C19.7542 32.1246 19.2503 31.7634 19.25 31.2504V16.1927C19.25 15.8497 19.4829 15.5506 19.8154 15.4662L25.5635 14.0092C25.6844 13.9785 25.8107 13.9785 25.9316 14.0092L31.4648 15.4115L37.0029 13.5394ZM26.5 28.7699L31 30.2904V16.8412L26.5 15.6996V28.7699ZM20.75 16.7767V30.2045L25 28.7679V15.6986L20.75 16.7767ZM32.5 16.6449V30.1185L36.4932 28.7689V15.2953L32.5 16.6449Z" fill="white"/></svg>',
  list:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M18.1348 17.1543C18.6126 17.1544 19 17.5416 19 18.0195C18.9998 18.4973 18.6125 18.8847 18.1348 18.8848H4.86523C4.38747 18.8847 4.00016 18.4973 4 18.0195C4 17.5416 4.38736 17.1544 4.86523 17.1543H18.1348ZM18.1348 11.3848C18.6126 11.3848 18.9999 11.7722 19 12.25C19 12.7279 18.6126 13.1152 18.1348 13.1152H4.86523C4.38736 13.1152 4 12.7279 4 12.25C4.00013 11.7722 4.38745 11.3848 4.86523 11.3848H18.1348ZM18.1348 5.61523C18.6125 5.61532 18.9998 6.00272 19 6.48047C19 6.95836 18.6126 7.34562 18.1348 7.3457H4.86523C4.38736 7.34562 4 6.95836 4 6.48047C4.00016 6.00272 4.38746 5.61532 4.86523 5.61523H18.1348Z" fill="white"/></svg>',
+ back:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M16.6131 2.34171C16.3006 2.02981 15.7945 2.03005 15.4823 2.34225L6.39154 11.433C6.07912 11.7454 6.07912 12.2519 6.39154 12.5644L15.485 21.6578C15.7974 21.9702 16.3039 21.9702 16.6163 21.6578L17.6084 20.6657C17.9208 20.3533 17.9208 19.8468 17.6084 19.5344L10.0727 11.9987L17.6067 4.46469C17.9193 4.15206 17.9191 3.6451 17.6061 3.33277L16.6131 2.34171Z" fill="currentColor"/></svg>',
  close:'<svg width="12" height="12" viewBox="0 0 12 12"><path d="M1 1l10 10M11 1L1 11" stroke="#2d3137" stroke-width="1.8" stroke-linecap="round"/></svg>',
  bubble:'<svg width="11" height="10" viewBox="0 0 12 11" fill="none"><path d="M1.5 1.2h9a.9.9 0 0 1 .9.9v5a.9.9 0 0 1-.9.9H5L2.4 9.8V8h-.9a.9.9 0 0 1-.9-.9v-5a.9.9 0 0 1 .9-.9Z" stroke="#8f8e94" stroke-width="1.2" stroke-linejoin="round"/></svg>',
  reload:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0E41D2" stroke-width="2.4" stroke-linecap="round"><path d="M20 12a8 8 0 11-2.3-5.6M20 4v5h-5"/></svg>',
@@ -179,9 +190,10 @@ window.LikeTarget=()=>{ const el=favIcon(); if(!el||$('serp').classList.contains
 function favBadge(delay){ setTimeout(()=>{ const el=favIcon(); el.style.position='relative'; let b=el.querySelector('.lk-badge'); if(!fav.size){ if(b) b.remove(); return; } if(!b){ b=document.createElement('span'); b.className='lk-badge'; el.appendChild(b);} b.textContent=fav.size; },delay); }
 
 /* блок поиска + фильтров — Figma */
-const sfHTML=`<div class="sf-search">${IC.search}<b>Москва</b><span>9 дек – 12 дек, 2 взрослых, 1 номер</span></div>
-  <div class="sf-chips"><span class="sf-fbtn">${IC.filter}</span><span class="sf-chip">Бесплатная отмена</span><span class="sf-chip">Завтрак</span><span class="sf-chip">Все включено</span><span class="sf-chip">Рейтинг 8+</span></div>`;
-$('serpSF').innerHTML=sfHTML; $('mapSF').innerHTML=sfHTML;
+const sfSearch=`<div class="sf-search">${IC.search}<b>Москва</b><span>9 дек – 12 дек, 2 взрослых, 1 номер</span></div>`;
+const sfChips=`<div class="sf-chips"><span class="sf-fbtn">${IC.filter}</span><span class="sf-chip">Бесплатная отмена</span><span class="sf-chip">Завтрак</span><span class="sf-chip">Все включено</span><span class="sf-chip">Рейтинг 8+</span></div>`;
+$('serpSF').innerHTML=sfSearch+sfChips;
+$('mapSF').innerHTML=`<div class="sf-row"><button class="sf-back" id="btnBack" type="button" aria-label="Назад к списку">${IC.back}</button>${sfSearch}</div>`+sfChips;
 $('btnMap').innerHTML=IC.map+'Карта';
 
 /* ---------- данные: реальные отели из выдачи ostrovok.ru (9–12 дек, 2 гостя) ---------- */
@@ -447,11 +459,70 @@ document.addEventListener('click',e=>{
 function toast(t){const el=$('toast');el.textContent=t;el.classList.add('show');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('show'),1500);}
 
 /* ---------- навигация ---------- */
-function showMap(){ $('serp').classList.add('hidden'); $('mapView').classList.remove('hidden'); initMap(); setTimeout(()=>{ map.invalidateSize(); if(V==='B'&&!S.area) S.area=null; renderBottom(); drawMarkers(); setListBtn(); },0); }
+let serpY=0;
+function showMap(){ serpY=$('serpScroll').scrollTop; $('serp').classList.add('hidden'); $('mapView').classList.remove('hidden'); initMap(); setTimeout(()=>{ map.invalidateSize(); if(V==='B'&&!S.area) S.area=null; renderBottom(); drawMarkers(); setListBtn(); },0); }
 $('serpScroll').addEventListener('scroll',()=>{ const sl=$('areaSlot'); if(!sl.firstChild) return; const t=sl.getBoundingClientRect().top-$('serpScroll').getBoundingClientRect().top; sl.classList.toggle('stuck',t<=0.5 && $('serpScroll').scrollTop>0); });
 function showSerp(){ $('mapView').classList.add('hidden'); $('serp').classList.remove('hidden'); renderSerp(); $('serpScroll').scrollTop=0; }
 $('btnMap').onclick=showMap;
+/* «Назад»: к исходному списку — область карты не применяется (S.area сброшен), шторки закрыты, прокрутка списка как была.
+   «Список» (ниже) — наоборот, открывает список отелей из области карты с тем же числом, что на кнопке */
+$('btnBack').onclick=()=>{ S.area=null; S.sel=null; S.group=null; S.sheet=null;
+  $('sheet').classList.add('hidden'); $('dim').classList.add('hidden');
+  $('mapView').classList.add('hidden'); $('serp').classList.remove('hidden'); renderSerp(); setListBtn();
+  $('serpScroll').scrollTop=serpY; };
 $('btnList').onclick=()=>{ if(V==='C'){ setSheet('peek'); return; } showSerp(); };
+
+/* ---------- тач-режим: мышь ведёт себя как палец (для показа на десктопе) ----------
+   протягивание скроллит ленты и списки (с инерцией), после протягивания клик не срабатывает; карта (Leaflet), галерея и шторка — своими обработчиками */
+(function(){
+  if(!matchMedia('(pointer:fine)').matches) return;  // настоящий тач — ничего не эмулируем
+  document.documentElement.classList.add('tch');
+  const dot=document.createElement('div'); dot.id='tdot'; document.body.appendChild(dot);
+  addEventListener('pointermove',e=>{ dot.style.left=e.clientX+'px'; dot.style.top=e.clientY+'px'; },{passive:true});
+  addEventListener('pointerdown',()=>dot.classList.add('down')); addEventListener('pointerup',()=>dot.classList.remove('down'));
+  document.documentElement.addEventListener('mouseleave',()=>dot.style.left='-99px');
+  addEventListener('dragstart',e=>e.preventDefault());
+  const canY=el=>{const o=getComputedStyle(el).overflowY;return (o==='auto'||o==='scroll')&&el.scrollHeight>el.clientHeight+1;};
+  const canX=el=>{const o=getComputedStyle(el).overflowX;return (o==='auto'||o==='scroll')&&el.scrollWidth>el.clientWidth+1;};
+  let d=null, raf=0, dragged=0, p0=null;  // p0 — любое нажатие: протянули дальше 6px → клик гасим (и после свайпа фото)
+  addEventListener('pointerdown',e=>{  // window/capture: доходит и с фото галереи (у неё свой stopPropagation)
+    if(e.pointerType!=='mouse'||e.button) return;
+    p0={x:e.clientX,y:e.clientY,m:false};
+    if(e.target.closest('.leaflet-container')&&!e.target.closest('#mapBottom,#sheet,.mtop')) return;  // карту тянет Leaflet
+    if(e.target.closest('#shHead')) return;
+    cancelAnimationFrame(raf);
+    let ys=null, xs=null;
+    for(let el=e.target; el&&el!==document.body; el=el.parentElement){ if(!ys&&canY(el)) ys=el; if(!xs&&canX(el)) xs=el; }
+    if(!ys&&!xs) return;
+    d={gal:!!e.target.closest('.gal-track'),x:e.clientX,y:e.clientY,ys,xs,ax:null,el:null,v:0,t:performance.now(),p:0,id:e.pointerId};
+  },true);
+  addEventListener('pointermove',e=>{
+    if(p0&&!p0.m&&Math.hypot(e.clientX-p0.x,e.clientY-p0.y)>6) p0.m=true;
+    if(!d) return;
+    const dx=e.clientX-d.x, dy=e.clientY-d.y;
+    if(!d.ax){ if(Math.hypot(dx,dy)<6) return;
+      d.ax = Math.abs(dy)>=Math.abs(dx) ? (d.ys?'y':null) : (d.xs&&!d.gal?'x':null);  // фото листает сама галерея
+      if(!d.ax){ d=null; return; }
+      d.el = d.ax==='y'?d.ys:d.xs; d.s = d.ax==='y'?d.el.scrollTop:d.el.scrollLeft; d.el.style.scrollBehavior='auto'; d.sn=d.el.style.scrollSnapType; d.el.style.scrollSnapType='none'; }
+    const pos = d.ax==='y'?e.clientY:e.clientX, now=performance.now();
+    if(d.p) d.v = (pos-d.p)/Math.max(1,now-d.t)*0.8 + d.v*0.2;
+    d.p=pos; d.t=now;
+    const off = d.ax==='y'?dy:dx;
+    if(d.ax==='y') d.el.scrollTop=d.s-off; else d.el.scrollLeft=d.s-off;
+  },{passive:true});
+  const end=()=>{
+    if(p0&&p0.m&&!(document.querySelector('.leaflet-dragging'))) dragged=performance.now(); p0=null;
+    if(!d) return; const k=d; d=null; if(!k.ax) return;
+    dragged=performance.now();
+    let v=-k.v*16;  // px за кадр
+    const step=()=>{ if(Math.abs(v)<0.4){ k.el.style.scrollSnapType=k.sn||''; return; }
+      if(k.ax==='y') k.el.scrollTop+=v; else k.el.scrollLeft+=v; v*=0.95; raf=requestAnimationFrame(step); };
+    if(performance.now()-k.t>80) v=0;  // остановили палец — без инерции
+    raf=requestAnimationFrame(step);
+  };
+  addEventListener('pointerup',end,true); addEventListener('pointercancel',end,true);
+  addEventListener('click',e=>{ if(performance.now()-dragged<250){ e.stopPropagation(); e.preventDefault(); } },true);
+})();
 
 renderSerp(); setListBtn();
 if(V==='C'){ showMap(); setTimeout(()=>{ S.area=visible().map(h=>h.id); areaSheet(); setSheet('half'); },50); }
